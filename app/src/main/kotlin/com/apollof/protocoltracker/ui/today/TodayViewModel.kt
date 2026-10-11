@@ -241,6 +241,9 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
         c.repository.journal.map(::measuredMarkers).flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     /** "Last draw 3 days ago" for the Log menu's Bloodwork row; null without a past draw. */
+    /** Startup steps that failed in this process (`StartupUpkeep`); Today says so until the app restarts. */
+    val upkeepFailed: StateFlow<List<String>> = c.upkeep.failed
+
     val lastDraw: StateFlow<String?> =
         combine(c.repository.bloodworkTimes, ticker) { draws, now -> lastDrawAge(draws, now, c.zone())?.let { "Last draw $it" } }
             .flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -451,7 +454,7 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
     }
 
     /**
-     * One formatted dose row. [dayPrefix] names an earlier day ("Thu Morning"); [pins] adds "pin 1/2". A missed dose
+     * One formatted dose row. [dayPrefix] names an earlier day ("Thu Morning"); [pins] adds "injection 1 of 2". A missed dose
      * shown on its own day says "Missed"; a skipped one says "Skipped" (it has no time of its own).
      */
     private fun doseItem(e: AgendaEntry, protocol: Protocol, zone: ZoneId, slotTimes: SlotTimes, pins: Map<String, String>, dayPrefix: String? = null): DoseItem {
@@ -513,7 +516,7 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
         return listOfNotNull(day, occ.slot?.label).joinToString(" ")
     }
 
-    /** "pin 2 of 2" for weekly-dosed injections, counted Monday to Sunday. */
+    /** "injection 2 of 2" for weekly-dosed injections, counted Monday to Sunday. */
     private fun pinNumbers(protocol: Protocol, weekStart: LocalDate, zone: ZoneId, anchors: IntervalAnchors, settings: Settings): Map<String, String> {
         val weekly = protocol.items.filter { item ->
             item.doseBasis == DoseBasis.PER_WEEK && protocol.compounds[item.compoundId]?.route == Route.INJECTION
@@ -523,7 +526,7 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
         val to = weekStart.plusDays(7).atStartOfDay(zone).toInstant()
         return occurrences(protocol.phases, weekly, from, to, zone, anchors, settings.slotTimes).groupBy { it.item.id }
             .filterValues { it.size > 1 }
-            .flatMap { (_, occs) -> occs.mapIndexed { i, o -> o.key to "pin ${i + 1}/${occs.size}" } }
+            .flatMap { (_, occs) -> occs.mapIndexed { i, o -> o.key to "injection ${i + 1} of ${occs.size}" } }
             .toMap()
     }
 

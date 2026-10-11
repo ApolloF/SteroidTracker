@@ -117,7 +117,7 @@ class LargeFontLayoutTest {
         compose.onNodeWithContentDescription("Back").performClick(); waitFor("per week")
 
         compose.onAllNodes(hasText("Levels") and hasClickAction())[0].performSemanticsAction(SemanticsActions.OnClick); waitFor("Testosterone")
-        compose.onAllNodes(hasText("Testosterone") and clickLabel("Open details"))[0].performSemanticsAction(SemanticsActions.OnClick); waitFor("Plan only")
+        compose.onAllNodes(hasText("Testosterone") and clickLabel("Open details"))[0].performSemanticsAction(SemanticsActions.OnClick); waitFor("Doses shown")
         cut += cutTexts("Level detail")
         compose.onNodeWithContentDescription("Back").performClick(); waitFor("Testosterone")
 

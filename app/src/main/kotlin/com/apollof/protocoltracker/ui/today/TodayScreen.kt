@@ -126,6 +126,7 @@ fun TodayScreen(onOpenSettings: () -> Unit, onOpenPlan: () -> Unit, onImportBloo
     val strip by vm.strip.collectAsStateWithLifecycle()
     val selected by vm.selected.collectAsStateWithLifecycle()
     val lastDraw by vm.lastDraw.collectAsStateWithLifecycle()
+    val upkeepFailed by vm.upkeepFailed.collectAsStateWithLifecycle()
     val siteLogs by vm.siteLogs.collectAsStateWithLifecycle()
     val measuredMarkers by vm.measuredMarkers.collectAsStateWithLifecycle()
     val logTime by vm.logTime.collectAsStateWithLifecycle()
@@ -175,6 +176,8 @@ fun TodayScreen(onOpenSettings: () -> Unit, onOpenPlan: () -> Unit, onImportBloo
                     SettingsButton(onOpenSettings)
                 }
             }
+
+            if (upkeepFailed.isNotEmpty()) item(key = "upkeep") { UpkeepFailedCard(upkeepFailed) }
 
             if (!state.loading && !state.hasPlan && state.extras.isEmpty() && state.journal.isEmpty()) {
                 item(key = "empty") {
@@ -318,6 +321,21 @@ private fun TodayCards(state: TodayState, vm: TodayViewModel, openDose: (LogTarg
                     onClick = { onEntry(row.entry) },
                 )
             }
+        }
+    }
+}
+
+/** A startup step failed (`StartupUpkeep`): the data may be out of date until a start succeeds. */
+@Composable
+private fun UpkeepFailedCard(steps: List<String>) {
+    val c = Tracker.colors
+    LedgerCard {
+        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("Startup update failed", style = TrackerType.title, color = c.ink)
+            Text(
+                "Not done: ${steps.joinToString(", ")}. Restart the app. If this message comes back, export a backup in Settings and report the problem.",
+                style = TrackerType.bodySmall, color = c.body2,
+            )
         }
     }
 }
