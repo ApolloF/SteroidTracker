@@ -239,6 +239,9 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
         c.repository.journal.map(::measuredMarkers).flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     /** "Last draw 3 days ago" for the Log menu's Bloodwork row; null without a past draw. */
+    /** Startup steps that failed in this process (`StartupUpkeep`); Today says so until the app restarts. */
+    val upkeepFailed: StateFlow<List<String>> = c.upkeep.failed
+
     val lastDraw: StateFlow<String?> =
         combine(c.repository.bloodworkTimes, ticker) { draws, now -> lastDrawAge(draws, now, c.zone())?.let { "Last draw $it" } }
             .flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)

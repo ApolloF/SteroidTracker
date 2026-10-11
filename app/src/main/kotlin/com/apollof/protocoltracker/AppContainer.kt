@@ -20,6 +20,12 @@ class AppContainer(context: Context, val clock: () -> Instant = Instant::now) {
     val doseActions = DoseActions(appContext, repository, settings, clock, zone)
     val reminders = ReminderScheduler(appContext, repository, settings, clock, zone)
     val journalFocus = JournalFocus()
+    val upkeep = StartupUpkeep(
+        listOf(
+            StartupUpkeep.Step("updating presets") { repository.seedPresets() },
+            StartupUpkeep.Step("updating log times") { repository.rekeyExactTimeLogs() },
+        ),
+    )
 }
 
 val Context.container: AppContainer get() = (applicationContext as ProtocolTrackerApp).container
