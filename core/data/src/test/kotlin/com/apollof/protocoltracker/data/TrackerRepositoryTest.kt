@@ -5,6 +5,7 @@ import com.apollof.protocoltracker.domain.schedule.TakenDose
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.apollof.protocoltracker.data.db.TrackerDatabase
+import com.apollof.protocoltracker.domain.io.ImportResult
 import com.apollof.protocoltracker.domain.model.Amount
 import com.apollof.protocoltracker.domain.model.DaySlot
 import com.apollof.protocoltracker.domain.model.DoseBasis
@@ -99,6 +100,15 @@ class TrackerRepositoryTest {
         val tren = all.first { it.id == "preset:tren-enan" }
         assertTrue(!tren.archived)
         assertEquals(Presets.byId("preset:tren-enan")!!.pk, tren.pk)
+    }
+
+    @Test
+    fun playStoresAnImportedPresetItDoesNotSeedWithPlayNames() = runTest {
+        val play = TrackerRepository(db, clock = { now }, presetChannel = PresetChannel.PLAY)
+        play.seedPresets()
+        play.applyImport(ImportResult(listOf(Presets.byId("preset:oxandrolone")!!), emptyList(), emptyList(), emptyList(), 0, emptyList()))
+        val oxandrolone = repo.compounds.first().first { it.id == "preset:oxandrolone" }
+        assertEquals("", oxandrolone.commonName)
     }
 
     @Test

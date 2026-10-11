@@ -96,6 +96,16 @@ class ImportAndBackupTest {
     }
 
     @Test
+    fun presetsNotYetStoredComeWithTheImport() {
+        // Play seeds only its own presets; an imported item must never point at a compound that is not stored.
+        val stored = Presets.all.filter { it.id != "preset:test-cyp" && it.id != "preset:anastrozole" }
+        val r = LegacyImport.parse(legacy, zone, stored)
+        assertEquals(setOf("preset:test-cyp", "preset:anastrozole"), r.compounds.filter { it.isPreset }.map { it.id }.toSet())
+        val known = (stored + r.compounds).map { it.id }.toSet()
+        assertTrue(r.items.all { it.compoundId in known })
+    }
+
+    @Test
     fun rejectsOtherFormats() {
         assertFailsWith<ImportFormatException> { LegacyImport.parse("""{"format":"other"}""", zone, emptyList()) }
         assertFailsWith<ImportFormatException> { LegacyImport.parse("not json", zone, emptyList()) }

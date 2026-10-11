@@ -307,7 +307,7 @@ class TrackerRepository(
 
     /** Merges a legacy import. IDs are source-derived, so repeating an import updates in place. */
     suspend fun applyImport(result: ImportResult) = db.withTransaction {
-        db.compounds().upsert(result.compounds.map { it.toEntity() })
+        db.compounds().upsert(result.compounds.map { presetChannel.present(it).toEntity() })
         db.phases().upsert(result.phases.map { it.toEntity() })
         db.items().upsert(result.items.map { it.toEntity() })
         db.logs().upsert(result.logs.map { it.toEntity() })
