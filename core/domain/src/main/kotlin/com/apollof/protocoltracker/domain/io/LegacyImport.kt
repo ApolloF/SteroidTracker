@@ -82,7 +82,8 @@ object LegacyImport {
 
         fun compoundFor(entry: JsonObject): Compound {
             val presetId = formulationToPreset[entry.str("formulationId")]
-            if (presetId != null) return compounds[presetId] ?: Presets.byId(presetId)!!
+            // A preset this build did not seed (Play seeds a subset) is added with the import, so its items stay visible.
+            if (presetId != null) return compounds[presetId] ?: Presets.byId(presetId)!!.also { compounds[presetId] = it; newCompounds[presetId] = it }
             val name = entry.str("name")?.trim().orEmpty().ifEmpty { "Imported item" }
             val id = "${PREFIX}compound:${name.lowercase()}"
             val unit = entry.obj("amount")?.str("unit")
