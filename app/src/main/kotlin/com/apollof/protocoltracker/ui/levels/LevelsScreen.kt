@@ -75,6 +75,7 @@ import com.apollof.protocoltracker.ui.components.ColorDot
 import com.apollof.protocoltracker.ui.components.EmptyState
 import com.apollof.protocoltracker.ui.components.Formats
 import com.apollof.protocoltracker.ui.components.LedgerCard
+import com.apollof.protocoltracker.ui.components.MenuChoice
 import com.apollof.protocoltracker.ui.components.FitRow
 import com.apollof.protocoltracker.ui.components.QuickChip
 import com.apollof.protocoltracker.ui.components.RowDivider
@@ -147,7 +148,7 @@ fun LevelsScreen(onOpenSettings: () -> Unit, onOpenGroup: (String) -> Unit, onOp
             }
             item(key = "controls") {
                 Column(Modifier.padding(horizontal = Spacing.screen, vertical = Spacing.md), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                    Segmented(LevelRange.entries, state.window.range, { it.label }) { vm.setRange(it); cursor = null }
+                    Segmented(LevelRange.entries, state.window.range, { it.label }, narrowTitle = "Range") { vm.setRange(it); cursor = null }
                     ModeRow(state.mode, vm::setMode)
                 }
             }
@@ -177,10 +178,10 @@ private fun modeLabel(mode: LevelMode) = when (mode) {
     LevelMode.PLANNED -> "Plan only"
 }
 
-/** What the charts draw. One setting for the whole tab: the overview and every detail screen follow it. */
+/** What the charts draw, as one line that opens a menu. One setting for the whole tab: overview and details follow it. */
 @Composable
 private fun ModeRow(mode: LevelMode, onMode: (LevelMode) -> Unit) =
-    Segmented(listOf(LevelMode.COMBINED, LevelMode.RECORDED, LevelMode.PLANNED), mode, ::modeLabel, onSelect = onMode)
+    MenuChoice("Doses shown", listOf(LevelMode.COMBINED, LevelMode.RECORDED, LevelMode.PLANNED), mode, ::modeLabel, onSelect = onMode)
 
 /** Compounds in use with their current estimate; tapping one scrolls to its chart. */
 @Composable
@@ -281,7 +282,7 @@ fun LevelDetailScreen(group: String, onBack: () -> Unit) {
         ) {
             item(key = "controls") {
                 Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                    Segmented(LevelRange.entries, state.window.range, { it.label }) { vm.setRange(it); cursor = null }
+                    Segmented(LevelRange.entries, state.window.range, { it.label }, narrowTitle = "Range") { vm.setRange(it); cursor = null }
                     ModeRow(state.mode, vm::setMode)
                 }
             }

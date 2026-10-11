@@ -128,7 +128,7 @@ class SmokeTest {
         tab("Levels")
         waitFor(hasText("Testosterone") and clickLabel("Open details"))
         compose.onNode(hasText("Testosterone") and clickLabel("Open details")).click()
-        waitForText("Plan only")
+        waitForText("Doses shown")
         back()
 
         tab("Journal")

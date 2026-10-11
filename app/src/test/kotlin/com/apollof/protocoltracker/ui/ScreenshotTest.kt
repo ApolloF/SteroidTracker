@@ -629,7 +629,7 @@ class ScreenshotTest {
 
         click(hasText("Levels") and hasClickAction()); waitFor("Testosterone"); shot("levels")
         click(hasText("Testosterone") and clickLabel("Open details"))
-        waitFor("Plan only")
+        waitFor("Doses shown")
         shot("level-detail")
         compose.onNodeWithContentDescription("Back").performClick(); waitFor("Testosterone")
 

@@ -101,13 +101,19 @@ class LevelsScreenTest {
     @Test
     fun overviewModeRowSetsTheModeForTheWholeTab() {
         compose.setContent { ProtocolTrackerTheme { LevelsScreen(onOpenSettings = {}, onOpenGroup = {}) } }
-        waitFor("Plan only")
-        // The row reads the mode back from the settings store, so a selected segment means the write landed.
-        fun selected(label: String) = hasText(label) and SemanticsMatcher.expectValue(SemanticsProperties.Selected, true)
-        compose.onNodeWithText("Plan only").tap()
-        compose.waitUntil(TIMEOUT_MS) { compose.onAllNodes(selected("Plan only")).fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("Logged").tap()
-        compose.waitUntil(TIMEOUT_MS) { compose.onAllNodes(selected("Logged")).fetchSemanticsNodes().isNotEmpty() }
+        waitFor("Doses shown")
+        // The row shows the mode read back from the settings store, so its new label means the write landed.
+        fun choose(label: String) {
+            compose.onNode(clickLabel("Change doses shown")).tap()
+            // The row shows another mode, so the only node with this exact text is the menu item.
+            waitFor(label)
+            compose.onNodeWithText(label).tap()
+            compose.waitUntil(TIMEOUT_MS) {
+                compose.onAllNodes(clickLabel("Change doses shown") and SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, label)).fetchSemanticsNodes().isNotEmpty()
+            }
+        }
+        choose("Plan only")
+        choose("Logged")
         assertEquals(LevelMode.RECORDED, runBlocking { container.settings.current().levelMode })
     }
 
