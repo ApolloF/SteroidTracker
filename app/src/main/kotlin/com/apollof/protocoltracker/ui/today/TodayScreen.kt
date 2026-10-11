@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.MonitorHeart
 import androidx.compose.material.icons.outlined.Remove
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Sick
 import androidx.compose.material.icons.outlined.Vaccines
 import androidx.compose.material.icons.outlined.WarningAmber
@@ -60,10 +62,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.apollof.protocoltracker.domain.model.DoseLog
 import com.apollof.protocoltracker.domain.model.HAIR_SHEDDING_LABELS
@@ -89,6 +94,7 @@ import com.apollof.protocoltracker.ui.components.WeekStripCompact
 import com.apollof.protocoltracker.ui.components.WeekStripFull
 import com.apollof.protocoltracker.ui.components.SectionLabel
 import com.apollof.protocoltracker.ui.components.SettingsButton
+import com.apollof.protocoltracker.ui.components.TimePickDialog
 import com.apollof.protocoltracker.ui.components.timingIcon
 import com.apollof.protocoltracker.ui.health.toEntry
 import com.apollof.protocoltracker.ui.health.BloodworkSheet
@@ -99,6 +105,7 @@ import com.apollof.protocoltracker.ui.theme.SectionLabelStyle
 import com.apollof.protocoltracker.ui.theme.Spacing
 import com.apollof.protocoltracker.ui.theme.Tracker
 import com.apollof.protocoltracker.ui.theme.TrackerType
+import java.time.LocalTime
 import kotlinx.coroutines.launch
 
 private sealed interface Sheet {
@@ -121,7 +128,9 @@ fun TodayScreen(onOpenSettings: () -> Unit, onOpenPlan: () -> Unit, onImportBloo
     val lastDraw by vm.lastDraw.collectAsStateWithLifecycle()
     val siteLogs by vm.siteLogs.collectAsStateWithLifecycle()
     val measuredMarkers by vm.measuredMarkers.collectAsStateWithLifecycle()
+    val logTime by vm.logTime.collectAsStateWithLifecycle()
     var pickingDay by remember { mutableStateOf(false) }
+    var pickingTime by remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var sheet by remember { mutableStateOf<Sheet?>(null) }
@@ -140,6 +149,8 @@ fun TodayScreen(onOpenSettings: () -> Unit, onOpenPlan: () -> Unit, onImportBloo
     }
     // Back from a picked day returns to today first.
     BackHandler(enabled = selected != null) { vm.closeDay() }
+    // A chosen check time is for one sitting: leaving Today (or the app) sets the clock back to now.
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { vm.setLogTime(null) }
 
     var logMenu by remember { mutableStateOf(false) }
     Scaffold(
@@ -157,6 +168,7 @@ fun TodayScreen(onOpenSettings: () -> Unit, onOpenPlan: () -> Unit, onImportBloo
         ) {
             item(key = "header") {
                 ScreenHeader("Today", eyebrow = state.dateLabel) {
+                    LogTimeChip(logTime, onClick = { pickingTime = true })
                     IconButton(onClick = { pickingDay = true }, modifier = Modifier.size(48.dp)) {
                         Icon(Icons.Outlined.CalendarMonth, contentDescription = "Open another day", tint = c.ink)
                     }
@@ -274,6 +286,13 @@ fun TodayScreen(onOpenSettings: () -> Unit, onOpenPlan: () -> Unit, onImportBloo
         onBloodwork = { logMenu = false; sheet = Sheet.Bloodwork },
         bloodworkSubtitle = lastDraw ?: "Lab results of a blood draw",
     )
+    if (pickingTime) TimePickDialog(
+        initial = logTime ?: vm.now().atZone(vm.zone()).toLocalTime(),
+        onDismiss = { pickingTime = false },
+        onConfirm = { vm.setLogTime(it); pickingTime = false },
+        title = "Checks record",
+        reset = ("Now" to { vm.setLogTime(null); pickingTime = false }).takeIf { logTime != null },
+    )
     if (pickingDay) DatePickDialog(vm.today(), onDismiss = { pickingDay = false }, onConfirm = {
         pickingDay = false
         vm.openDay(it)
@@ -363,6 +382,25 @@ private fun TodayGroup(group: GroupUi, vm: TodayViewModel, openDose: (LogTarget)
                 onOpen = { vm.targetFor(item, group.label.lowercase())?.let(openDose) },
                 note = item.note,
             )
+        }
+    }
+}
+
+/** The clock in Today's corner: "Now", or the time every check records until it is set back to now. */
+@Composable
+private fun LogTimeChip(time: LocalTime?, onClick: () -> Unit) {
+    val c = Tracker.colors
+    val shape = RoundedCornerShape(50)
+    val pill = if (time != null) Modifier.background(c.accentSoft, shape) else Modifier.border(1.dp, c.line, shape)
+    Box(
+        Modifier.heightIn(min = 48.dp).clickable(role = Role.Button, onClickLabel = "Change check time", onClick = onClick)
+            .semantics { contentDescription = "Check time" },
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(pill.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Outlined.Schedule, contentDescription = null, tint = if (time != null) c.accentText else c.muted, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(time?.format(Formats.time) ?: "Now", style = TrackerType.label, color = if (time != null) c.accentText else c.ink, maxLines = 1)
         }
     }
 }

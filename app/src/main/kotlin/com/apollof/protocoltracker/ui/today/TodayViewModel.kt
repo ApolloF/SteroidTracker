@@ -29,6 +29,7 @@ import com.apollof.protocoltracker.domain.model.measuredMarkers
 import com.apollof.protocoltracker.domain.model.shownAt
 import com.apollof.protocoltracker.domain.pk.LabUnits
 import com.apollof.protocoltracker.domain.schedule.Agenda
+import com.apollof.protocoltracker.domain.schedule.atTimeOn
 import com.apollof.protocoltracker.domain.schedule.AgendaEntry
 import com.apollof.protocoltracker.domain.schedule.AgendaStatus
 import com.apollof.protocoltracker.domain.schedule.AgendaWindows
@@ -61,6 +62,7 @@ import com.apollof.protocoltracker.ui.health.toEntry
 import com.apollof.protocoltracker.ui.minuteTicker
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.TextStyle
 import java.util.Locale
@@ -306,13 +308,31 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
     fun shiftDay(days: Long) { selectedDay.value?.plusDays(days)?.let(::openDay) }
     fun today(): LocalDate = state.value.date ?: c.clock().atZone(c.zone()).toLocalDate()
 
-    /** The check on a picked day: past days record the planned time, today follows the usual check rules. */
+    private data class ChosenTime(val day: LocalDate, val time: LocalTime)
+
+    private val chosenTime = MutableStateFlow<ChosenTime?>(null)
+
+    /** The clock in Today's corner: the time every check records; null records as usual. It holds for the day it was set on. */
+    val logTime: StateFlow<LocalTime?> = combine(chosenTime, today) { chosen, today -> chosen?.takeIf { it.day == today }?.time }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun setLogTime(time: LocalTime?) { chosenTime.value = time?.let { ChosenTime(today(), it) } }
+
+    /** The chosen time on [date] (a picked day or today), or null when none is set. */
+    private fun chosenAt(date: LocalDate): Instant? =
+        chosenTime.value?.takeIf { it.day == today() }?.let { state.value.slotTimes.atTimeOn(date, it.time, c.zone()) }
+
+    /** " at 8:00" for a message about a check that recorded the chosen time. */
+    private fun atSuffix(at: Instant?): String = at?.let { " at ${Formats.time(it, c.zone())}" }.orEmpty()
+
+    /** The check on a picked day: past days record the chosen time or else the planned time, today follows the usual check rules. */
     fun checkOnDay(item: DoseItem, day: DayUi) {
         val occ = item.entry.occurrence
         if (item.entry.log != null || occ == null || day.isToday) return check(item)
         if (day.isFuture) return
         val label = item.commonName.ifBlank { item.name.replaceFirstChar { it.titlecase() } }
-        launchLogged("$label logged for ${day.date.format(Formats.dayShort)}") { listOf(c.doseActions.take(occ, takenAt = occ.at)) }
+        val at = chosenAt(day.date)
+        launchLogged("$label logged for ${day.date.format(Formats.dayShort)}${atSuffix(at)}") { listOf(c.doseActions.take(occ, takenAt = at ?: occ.at)) }
     }
 
     fun logDayGroup(group: GroupUi, day: DayUi) {
@@ -320,7 +340,8 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
         if (day.isFuture) return
         val pending = group.items.filter { it.state.open }.mapNotNull { it.entry.occurrence }
         if (pending.isEmpty()) return
-        launchLogged("${pending.size} doses logged for ${day.date.format(Formats.dayShort)}") { pending.map { c.doseActions.take(it, takenAt = it.at) } }
+        val at = chosenAt(day.date)
+        launchLogged("${pending.size} doses logged for ${day.date.format(Formats.dayShort)}${atSuffix(at)}") { pending.map { c.doseActions.take(it, takenAt = at ?: it.at) } }
     }
 
     fun dayTarget(item: DoseItem, day: DayUi): LogTarget? {
@@ -529,21 +550,24 @@ class TodayViewModel(private val c: AppContainer) : ViewModel() {
             return
         }
         val occ = item.entry.occurrence ?: return
-        launchLogged("$label taken${item.siteSuffix}") { listOf(c.doseActions.take(occ, site = item.siteWrite)) }
+        val at = chosenAt(today())
+        launchLogged("$label taken${atSuffix(at)}${item.siteSuffix}") { listOf(c.doseActions.take(occ, takenAt = at, site = item.siteWrite)) }
     }
 
     /** Log all: each pending dose with the site its row shows. */
     fun logGroup(group: GroupUi) {
         val pending = group.items.filter { it.state.open }.mapNotNull { item -> item.entry.occurrence?.let { it to item.siteWrite } }
         if (pending.isEmpty()) return
-        launchLogged("${pending.size} doses taken") { pending.map { (occ, site) -> c.doseActions.take(occ, site = site) } }
+        val at = chosenAt(today())
+        launchLogged("${pending.size} doses taken${atSuffix(at)}") { pending.map { (occ, site) -> c.doseActions.take(occ, takenAt = at, site = site) } }
     }
 
     fun logMissedAsTaken(item: DoseItem) {
         val occ = item.entry.occurrence ?: return
+        val chosen = chosenAt(today())
         // A dose that restarts its interval is recorded now, so the next one is counted from today.
-        val takenAt = if (occ.item.schedule.followsLastDose) c.clock() else occ.at
-        launchLogged("${item.commonName.ifBlank { item.name }} logged${item.siteSuffix}") { listOf(c.doseActions.take(occ, takenAt = takenAt, site = item.siteWrite)) }
+        val takenAt = chosen ?: if (occ.item.schedule.followsLastDose) c.clock() else occ.at
+        launchLogged("${item.commonName.ifBlank { item.name }} logged${atSuffix(chosen)}${item.siteSuffix}") { listOf(c.doseActions.take(occ, takenAt = takenAt, site = item.siteWrite)) }
     }
 
     /** Logs or re-logs a scheduled dose; undo restores the previous entry when one existed. */

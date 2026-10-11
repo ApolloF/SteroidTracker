@@ -36,7 +36,11 @@ import java.time.ZoneOffset
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TimePickDialog(initial: LocalTime, onDismiss: () -> Unit, onConfirm: (LocalTime) -> Unit, title: String = "Time") {
+fun TimePickDialog(
+    initial: LocalTime, onDismiss: () -> Unit, onConfirm: (LocalTime) -> Unit, title: String = "Time",
+    /** A third button ("Now") beside Cancel, when the choice can be undone. */
+    reset: Pair<String, () -> Unit>? = null,
+) {
     // The dial follows Settings › Units and formats (12-hour with AM/PM).
     val state = rememberTimePickerState(initial.hour, initial.minute, is24Hour = DisplayFormat.current.use24Hour)
     AlertDialog(
@@ -44,7 +48,12 @@ fun TimePickDialog(initial: LocalTime, onDismiss: () -> Unit, onConfirm: (LocalT
         title = { Text(title) },
         text = { TimePicker(state) },
         confirmButton = { TextButton(onClick = { onConfirm(LocalTime.of(state.hour, state.minute)) }) { Text("OK") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = {
+            Row {
+                reset?.let { (label, action) -> TextButton(onClick = action) { Text(label) } }
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+            }
+        },
     )
 }
 
