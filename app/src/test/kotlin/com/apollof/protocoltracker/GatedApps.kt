@@ -41,9 +41,9 @@ class LevelsOffApp : ProtocolTrackerApp() {
 
 /**
  * Waits until [condition] holds, running the main looper in between: view models launch on Robolectric's paused
- * main looper, which a plain wait never lets run.
+ * main looper, which a plain wait never lets run. 60 s: CI runners have taken over 30 s to recompute Levels state.
  */
-fun awaitMain(what: String, timeoutMillis: Long = 30_000, condition: () -> Boolean) {
+fun awaitMain(what: String, timeoutMillis: Long = 60_000, condition: () -> Boolean) {
     val deadline = System.currentTimeMillis() + timeoutMillis
     while (true) {
         ShadowLooper.idleMainLooper()
