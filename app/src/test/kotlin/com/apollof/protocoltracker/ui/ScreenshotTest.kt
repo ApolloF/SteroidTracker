@@ -642,7 +642,7 @@ class ScreenshotTest {
         openBloodwork(); waitFor("Hematocrit"); shot("journal-bloodwork")
 
         compose.onNodeWithContentDescription("Settings").performClick(); waitFor("Appearance"); shot("settings")
-        for (page in listOf("Appearance", "Units and formats", "Today", "Times of day", "Reminders", "Export and data", "About")) {
+        for (page in listOf("Appearance", "Units and formats", "Today", "Times of day", "Reminders", "Export and data", "About", "Privacy policy")) {
             compose.onNode(hasText(page) and hasClickAction()).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
             compose.waitUntil(15_000) { compose.onAllNodesWithContentDescription("Back").fetchSemanticsNodes().size == 1 && compose.onAllNodesWithText(page).fetchSemanticsNodes().size == 1 }
             shot("settings-" + page.lowercase().replace(' ', '-'))

@@ -145,7 +145,7 @@ class SmokeTest {
         back()
 
         compose.onNode(hasContentDescription("Settings")).click()
-        val pages = listOf("Appearance", "Units and formats", "Today", "Times of day", "Reminders", "Export and data", "About")
+        val pages = listOf("Appearance", "Units and formats", "Today", "Times of day", "Reminders", "Export and data", "About", "Privacy policy")
         for (page in pages) {
             val row = hasText(page) and hasClickAction()
             waitFor(row)

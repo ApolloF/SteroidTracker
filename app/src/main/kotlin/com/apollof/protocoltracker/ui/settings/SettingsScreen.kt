@@ -35,6 +35,7 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material.icons.outlined.SaveAlt
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Straighten
@@ -85,6 +86,7 @@ import com.apollof.protocoltracker.data.ThemeMode
 import com.apollof.protocoltracker.data.TimeFormat
 import com.apollof.protocoltracker.data.WeekBarMode
 import com.apollof.protocoltracker.domain.io.Backup
+import com.apollof.protocoltracker.domain.io.PolicyText
 import com.apollof.protocoltracker.domain.io.WebImport
 import com.apollof.protocoltracker.domain.model.DaySlot
 import com.apollof.protocoltracker.domain.pk.LabUnits
@@ -121,6 +123,7 @@ enum class SettingsPage(val title: String, val icon: ImageVector) {
     REMINDERS("Reminders", Icons.Outlined.NotificationsNone),
     DATA("Export and data", Icons.Outlined.SaveAlt),
     ABOUT("About", Icons.Outlined.Info),
+    PRIVACY("Privacy policy", Icons.Outlined.PrivacyTip),
 }
 
 /** One-line summary of a page's current values on the overview. */
@@ -140,6 +143,7 @@ private fun summary(page: SettingsPage, s: Settings): String = when (page) {
     SettingsPage.REMINDERS -> if (s.doseReminders) "Dose reminders on" else "Dose reminders off"
     SettingsPage.DATA -> "Reports, backup, restore, import"
     SettingsPage.ABOUT -> "Version ${BuildConfig.VERSION_NAME}"
+    SettingsPage.PRIVACY -> "Your data, permissions and rights"
 }
 
 private val ThemeMode.label: String get() = name.lowercase().replaceFirstChar(Char::uppercase)
@@ -193,6 +197,7 @@ fun SettingsPageScreen(page: SettingsPage, onBack: () -> Unit) {
             SettingsPage.REMINDERS -> RemindersPage(settings, vm)
             SettingsPage.DATA -> DataPage(vm)
             SettingsPage.ABOUT -> AboutPage()
+            SettingsPage.PRIVACY -> PrivacyPage()
         }
     }
 }
@@ -505,8 +510,31 @@ private fun AboutPage() {
             style = TrackerType.bodySmall, color = c.body2,
         )
         Text(stringResource(R.string.privacy_line), style = TrackerType.bodySmall, color = c.body2)
-        Text(stringResource(R.string.privacy_policy_where), style = TrackerType.caption, color = c.muted)
         Text("Fonts: IBM Plex Sans and IBM Plex Mono (SIL Open Font License).", style = TrackerType.caption, color = c.muted)
+    }
+}
+
+/** The privacy policy shipped with this flavour (res/raw/privacy_policy.md; foss is PRIVACY.md word for word). */
+@Composable
+private fun PrivacyPage() {
+    val c = Tracker.colors
+    val resources = LocalContext.current.resources
+    val blocks = remember(resources) {
+        PolicyText.parse(resources.openRawResource(R.raw.privacy_policy).bufferedReader().use { it.readText() })
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        blocks.forEach { block ->
+            when (block) {
+                // The page title already says "Privacy policy".
+                is PolicyText.Heading -> if (block.level > 1) Text(block.text, style = TrackerType.title, color = c.ink, modifier = Modifier.padding(top = Spacing.md))
+                is PolicyText.Paragraph -> Text(block.text, style = TrackerType.bodySmall, color = c.body2)
+                is PolicyText.Bullet -> Row {
+                    Text("•", style = TrackerType.bodySmall, color = c.body2, modifier = Modifier.width(Spacing.lg))
+                    Text(block.text, style = TrackerType.bodySmall, color = c.body2)
+                }
+            }
+        }
+        Text(stringResource(R.string.privacy_policy_where), style = TrackerType.caption, color = c.muted, modifier = Modifier.padding(top = Spacing.md))
     }
 }
 
