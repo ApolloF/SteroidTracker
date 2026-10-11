@@ -40,6 +40,28 @@ Basic rows added in presets-2026-10c (estradiol valerate, ostarine, cardarine, S
 same curve. `rise` is absent in data stored before presets-2026-10b and defaults to LINEAR. The curve editor has no
 field for it; an edited preset keeps its own.
 
+**Exposure anchoring (Basic esters, presets-2026-10d).** The Basic peak does not depend on `t½`, so the area under one
+dose (AUC = `P · areaPerPeakH`) grows with `t½`: per mg of hormone (AUC ÷ F) it is `20.71 · M · t½` (days). A longer ester
+would give more exposure from the same mg of hormone, which is wrong: the ester only sets the release rate. In
+presets-2026-10c Tren E showed 7.3× the exposure of Tren A per mg trenbolone, Parabolan 5.3×, Masteron E 2.25× Masteron P
+and Test Dec 1.9× the study-based testosterone esters. A row with `SheetRow.exposureAnchors` (a model choice, not a
+sheet column) therefore gets the peak that gives the same exposure per mg of hormone as the mean of its anchors' own
+curves (`PkSheetModel.exposurePerUnitHormone` = `P · areaPerPeakH ÷ F`); `t½`, Tmax and the rise are unchanged:
+
+```
+P = mean(exposure of anchors) · F / areaPerPeakH      (this row's first-order shape)
+```
+
+| Row | Anchors |
+|---|---|
+| Test PP, Test Iso, Test Dec | Test E, Test C, Test P (within ~10 % of each other: AUC ÷ F 57.4, 58.2, 62.8 ng/dL·day per mg) |
+| Tren E, Parabolan | Tren A |
+| Masteron E | Masteron P |
+
+Tren A and Masteron P are the family anchors (no human data to pick another level). Primobolan Depot, DHB and estradiol
+valerate keep their multipliers, which the sheet author calibrated ("Multiplier Used: Yes"); MENT, all orals and the
+SARMs are first-pass or tuned the same way. `BasicExposureTest` checks the equal exposure.
+
 Doses add up (linear superposition). The engine groups doses by (Tmax, t½, rise); within a group
 peaks occur in dose order, so the decaying part is one running sum advanced by `e^(−k·Δt)` and only doses still rising
 are summed individually. Doses older than `Tmax + 10·t½` are dropped (< 0.1 % contribution).
@@ -49,7 +71,7 @@ are summed individually. Doses older than `Tmax + 10·t½` are dropped (< 0.1 % 
 | Compound | M | Sheet says |
 |---|---|---|
 | Test E | 0.33 | No |
-| Test C, Test Iso | 0.6 | No |
+| Test C | 0.6 | No |
 | Boldenone Cyp (Test C clone) | 0.6 | (empty row) |
 | Test Susp | 6 | Yes |
 | Andriol (oral TU) | 0.7583841 | Yes |
@@ -62,6 +84,7 @@ are summed individually. Doses older than `Tmax + 10·t½` are dropped (< 0.1 % 
 | Anavar | 0.3 | Yes |
 | Superdrol | 20 | Yes |
 | Semaglutide (oral) | 1.5 | Yes |
+| Telmisartan | 0.5298 (40 mg arm, see notes) | No |
 | Estradiol valerate | 0.45 | Yes |
 | Progesterone (oral) | 0.06 | Yes |
 | Ostarine (enobosarm) | 15 | Yes |
@@ -102,7 +125,14 @@ not an object reads as no adjustment, entries that are not numbers are dropped, 
   mislabelled. Not imported: the castor-oil row (t½ 33.9 d) is the Nebido preset.
 - **Boldenone cypionate:** the sheet row is empty ("Cloned settings from Testosterone Cypionate"); the preset uses
   Test C's settings, M 0.6 included.
-- **Test E, Test C and Test Iso** have a multiplier although the sheet says "No".
+- **Telmisartan:** the sheet's Cmax 770.06 ng/dL per mg (7.70 ng/mL) is the mean per mg of the two arms of the cited
+  study (PMID 17009837, healthy men, single dose, LC-MS/MS): 40 mg gave 163.2 ng/mL (4.08 per mg), 80 mg gave
+  905.7 ng/mL (11.32 per mg). Telmisartan is more than dose-proportional (label: 20–160 mg), so one per-mg value fits only
+  one dose; the average was 1.9× too high at 40 mg and 0.68× too low at 80 mg. Since presets-2026-10d the multiplier
+  163.2 / 40 / 7.700625 = 0.5298 gives the 40 mg arm (408 ng/dL = 4.08 ng/mL per mg), right at the usual 20–40 mg; it
+  underestimates 80 mg about 2.8×. Half-life and Tmax (means of both arms) are unchanged.
+- **Test E, Test C and telmisartan** have a multiplier although the sheet says "No". Test Iso had 0.6 until presets-2026-10c; exposure
+  anchoring (above) replaces it.
 
 ## Peak `P` and F in the app
 - `PkParams.peakPerUnit` is P per base unit of the preset. The sheet's Cmax is ng/dL per mg dosed (ester mass as
@@ -132,9 +162,9 @@ A group is *in use* when a plan item active today takes it, or a taken dose is s
 (`takenAt + Tmax + 6.64 t½ ≥ now`, since 2^-6.64 ≈ 1 %). Skipped doses never count. Other groups (other phases, paused
 items, old doses) are listed under "Not in use now". Order follows the plan sections; the colour is that of the compound in use.
 
-## Presets (`Presets.kt`, `VERSION = presets-2026-10c`)
+## Presets (`Presets.kt`, `VERSION = presets-2026-10d`)
 Sheet values unchanged: t½ and Tmax in days (stored in hours), Cmax in the sheet's unit, F. "Model" A = Advanced, B =
-Basic (Tmax = 3/8 t½, P = 14 · M · F · 0.875). P is per mg unless noted. "—" = log only, no curve.
+Basic (Tmax = 3/8 t½, P = 14 · M · F · 0.875, except ³ rows). P is per mg unless noted. "—" = log only, no curve.
 
 | Section | Preset | Model | t½ (d) | Tmax (d) | Cmax | M | P | F | Source |
 |---|---|---|---|---|---|---|---|---|---|
@@ -143,17 +173,17 @@ Basic (Tmax = 3/8 t½, P = 14 · M · F · 0.875). P is per mg unless noted. "�
 | Injectable | Test P (testosterone propionate) | A | 1.0375 | 1.0625 | 26 | 1 | 26 | 0.84 | Sheet; JCEM 63(6):1361 |
 | Injectable | Nebido (testosterone undecanoate, castor oil) | A | 33.9 | 10 | 1.187 | 1 | 1.187 | 0.63 ¹ | Sheet; jandrol.109.009597, Nebido PI |
 | Injectable | Test U MCT (testosterone undecanoate, MCT oil) **new** | A | 20 | 8.5 | 1.85 | 1 | 1.85 | 0.63 ¹ | Sheet: estimated values, no study |
-| Injectable | Test PP (testosterone phenylpropionate) | B | 2.5 | 0.9375 | — | 1 | 8.453 | 0.69 | Sheet; PMC9611952 |
-| Injectable | Test Iso (testosterone isocaproate) | B | 3.1 | 1.1625 | — | 0.6 | 5.513 | 0.75 | Sheet; PMC9611952 |
-| Injectable | Test Dec (testosterone decanoate) | B | 5.6 | 2.1 | — | 1 | 7.963 | 0.65 | Sheet |
+| Injectable | Test PP (testosterone phenylpropionate) | B ³ | 2.5 | 0.9375 | — | 1 | 9.701 | 0.69 | Sheet; PMC9611952 |
+| Injectable | Test Iso (testosterone isocaproate) | B ³ | 3.1 | 1.1625 | — | 1 | 8.504 | 0.75 | Sheet; PMC9611952 |
+| Injectable | Test Dec (testosterone decanoate) | B ³ | 5.6 | 2.1 | — | 1 | 4.080 | 0.65 | Sheet |
 | Injectable | Test Susp (testosterone suspension) | A | 1.375 | 0.25 | 5.067 | 6 | 30.40 | 1.0 | Sheet (horse study, scaled) |
 | Injectable | Deca (nandrolone decanoate) | A | 10.2 | 1.833 | 3.99 | 1 | 3.99 | 0.64 ¹ | Sheet; JCEM 90(5):2624 |
 | Injectable | NPP (nandrolone phenylpropionate) | A | 2.4 | 1 | 8.91465 | 1 | 8.915 | 0.67 | Sheet; PMID 9103484 |
 | Injectable | Tren A (trenbolone acetate) | B | 1.5 | 0.5625 | — | 1 | 10.66 | 0.87 | Sheet; S002228602030452X |
-| Injectable | Tren E (trenbolone enanthate) | B | 11 | 4.125 | — | 1 | 8.698 | 0.71 | Sheet; S002228602030452X |
-| Injectable | Parabolan (trenbolone hexahydrobenzylcarbonate) | B | 8 | 3 | — | 1 | 8.085 | 0.66 | Sheet; S002228602030452X |
+| Injectable | Tren E (trenbolone enanthate) | B ³ | 11 | 4.125 | — | 1 | 1.186 | 0.71 | Sheet; S002228602030452X |
+| Injectable | Parabolan (trenbolone hexahydrobenzylcarbonate) | B ³ | 8 | 3 | — | 1 | 1.516 | 0.66 | Sheet; S002228602030452X |
 | Injectable | Masteron P (drostanolone propionate) | B | 2 | 0.75 | — | 1 | 10.29 | 0.84 | Sheet |
-| Injectable | Masteron E (drostanolone enanthate) | B | 4.5 | 1.6875 | — | 1 | 8.943 | 0.73 | Sheet |
+| Injectable | Masteron E (drostanolone enanthate) | B ³ | 4.5 | 1.6875 | — | 1 | 3.974 | 0.73 | Sheet |
 | Injectable | Primobolan Depot (methenolone enanthate) | B | 10.5 | 3.9375 | — | 0.5 | 4.471 | 0.73 | Sheet |
 | Injectable | EQ (boldenone undecylenate) | A | 5.125 | 6 | 1.098 | 1 | 1.098 | 0.63 | Sheet; PMID 17348894 |
 | Injectable | Boldenone Cyp | A | 6.9 | 4.5 | 5.56 | 0.6 | 3.336 | 0.70 | Sheet: cloned from Test C |
@@ -190,7 +220,7 @@ Basic (Tmax = 3/8 t½, P = 14 · M · F · 0.875). P is per mg unless noted. "�
 | Support | Clomid (clomiphene) | A | 5 | 0.2083 | 40 | 1 | 40 | 0.95 | Sheet; PMID 19033451 |
 | Support | hCG | A | 1.9625 | 1 | 2072 | 1 | 0.2072 per IU | 0.45 | Sheet; PMC8301557 |
 | Support | Caber (cabergoline) | A | 3.5833 | 0.083 | 4.03 | 1 | 4.03 | 0.465 | Sheet; PMID 12844325 |
-| Support | Telmisartan | A | 0.9708 | 0.0708 | 770.06 | 1 | 770.06 | 0.43 | Sheet; PMID 17009837 |
+| Support | Telmisartan | A | 0.9708 | 0.0708 | 770.06 | 0.5298 | 408 | 0.43 | Sheet; PMID 17009837 (40 mg arm) |
 | Support | Nebivolol | A | 0.7054 | 0.1296 | 11.6 | 1 | 11.6 | 0.54 | Sheet; PMID 24845234 |
 | Support | Cialis (tadalafil) | A | 0.7083 | 0.1042 | 1725 | 1 | 1725 | n/a → 1.0 | Sheet; PMC1885023 |
 | Support | T3 (liothyronine) | A | 0.9183 | 0.1042 | 6.92 per mcg | 1 | 6920 | n/a → 1.0 | Sheet; PMC5167556 |
@@ -226,6 +256,10 @@ Compounds outside the sheet keep their label-based values (unchanged from preset
 | Peptide | Ipamorelin | 2 h | est. | relative | 1.0 | Gobburu et al. 1999: t½ ≈ 2 h |
 | Peptide | CJC-1295 (no DAC), MK-677, BPC-157, TB-500, GHK-Cu, Melanotan II, AOD-9604, MOTS-c | — | — | — | — | No reliable human level data (MK-677: reported half-lives conflict) |
 
+³ Exposure-anchored Basic ester (see Per-dose curve): P is set so that the exposure per mg of hormone equals that of the
+anchors, not 14 · M · F · 0.875 (10c values: Test PP 8.453, Test Iso 5.513 with M 0.6, Test Dec 7.963, Tren E 8.698,
+Parabolan 8.085, Masteron E 8.943).
+
 ¹ F corrected from the sheet (Nebido and Test U MCT 0.65, Deca 0.73, DHB 1.0) to the ester fraction, parent ÷ ester
 molar mass from the formulas with IUPAC standard atomic weights (C 12.011, H 1.008, O 15.999): testosterone undecanoate
 C30H48O3 456.71 → 288.43 ÷ 456.71 = 0.632; nandrolone decanoate C28H44O3 428.66 → 274.40 ÷ 428.66 = 0.640;
@@ -242,8 +276,9 @@ Tmax longer than t½ for EQ and Winstrol Depot.
 - DNP: not a medicine and not planned in the app.
 
 **Stored data (`PresetMigration`).** Log snapshots and edited presets keep their own copy of the kinetics. On seeding
-(start-up and after a restore), a copy that still equals the kinetics a preset shipped with in presets-2026-09b/-10a
-(half-life, Tmax, peak, unit; F ignored) is replaced by the current preset's, so old doses are plotted with the
+(start-up and after a restore), a copy that still equals the kinetics a preset shipped with in presets-2026-09b/-10a (or, for
+Test PP, Iso, Dec, Tren E, Parabolan, Masteron E and telmisartan, in presets-2026-10c)
+(half-life, Tmax, peak, unit, rise; F ignored) is replaced by the current preset's, so old doses are plotted with the
 current model too. Kinetics the user changed are left alone. No database schema change: kinetics are stored as JSON.
 
 **Before and after** (steady state, ng/dL, average and trough–peak; "relative only" = no absolute curve before):
@@ -265,6 +300,17 @@ current model too. Kinetics the user changed are left alone. No database schema 
 | Tren E 200 mg/wk (100 mg every 3.5 d) | relative only | 4,622 (4,489–4,689) |
 | Anavar 20 mg/day | 6,733 (1,660–16,833) | 2,020 (498–5,050) |
 | Dianabol 30 mg/day | relative only | 1,291 (199–3,644) |
+
+presets-2026-10d (exposure anchoring), steady state, average (trough–peak):
+
+| Dose | Before (presets-2026-10c) | After (presets-2026-10d) |
+|---|---|---|
+| Tren E 200 mg/wk (100 mg every 3.5 d) | 4,622 (4,487–4,687) | 630 (612–639) |
+| Parabolan 150 mg/wk (75 mg every 3.5 d) | 2,344 (2,218–2,396) | 439 (416–449) |
+| Masteron E 400 mg/wk (weekly) | 3,888 (2,391–5,420) | 1,728 (1,062–2,409) |
+| Test Dec 250 mg/wk (weekly) | 2,693 (1,872–3,433) | 1,379 (959–1,759) |
+
+Telmisartan 40 mg once: peak 308 ng/mL before, 163 ng/mL after (study: 163.2 ng/mL at 1.8 h).
 
 Test E 300 mg/wk now has a steady trough of 1,328 ng/dL against the 1,345 ng/dL nadir of Bhasin et al. 2001, so the
 Test E multiplier does what the earlier calibration proposal ([proposals/pk-calibration.md](proposals/pk-calibration.md),
@@ -292,6 +338,8 @@ a limit ("<0.3") is flagged only when its true value cannot lie on both sides of
   it cannot change the shape of a curve.
 - No endogenous production, suppression, active metabolites or individual factors (weight, injection site, volume).
 - Estimates are for planning and comparison, not blood test results.
+- Study-based (Advanced) rows still differ per mg of hormone because their Cmax and Tmax come from different studies:
+  Deca gives about 1.85× the exposure of NPP, Nebido about 1.75× Test E. Kept as the sheet has them.
 - Estradiol is estimated only from estradiol doses (gel, cypionate, valerate), with lab estradiol drawn on that curve.
   Estradiol made from testosterone is not estimated: a single factor on the testosterone curve cannot account for
   aromatase inhibitor, Dbol or hCG changes, so without an estradiol preset measured estradiol is shown only as lab results.

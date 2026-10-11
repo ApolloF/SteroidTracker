@@ -82,18 +82,23 @@ class PkSheetGoldenTest {
         listOf(840 to 2031.68, 852 to 1758.493, 864 to 1522.039, 876 to 1763.114, 887 to 2008.367, 1007 to 1540.506, 1100 to 503.066),
     )
 
+    // presets-2026-10d anchors Tren E's exposure to Tren A: the peak went from 8.6975 to 1.1860227 per mg and the shape
+    // is unchanged, so every reference value of the earlier model is scaled by 1.1860227 / 8.6975 = 3/22 = 0.1363636.
     @Test
     fun trenEnanthateBasicModel() = check(
         "Tren E 200 mg / 3.5 d", "tren-enan", 200.0, 84.0, 12,
-        listOf(1848 to 8908.624, 1860 to 9202.203, 1932 to 8922.76, 1947 to 9271.11, 1948 to 9278.364, 2015 to 8946.022, 2351 to 3774.519),
+        listOf(1848 to 1214.812, 1860 to 1254.846, 1932 to 1216.74, 1947 to 1264.242, 1948 to 1265.231, 2015 to 1219.912, 2351 to 514.707),
     )
 
+    // presets-2026-10d anchors Test Iso's exposure to the testosterone esters (no multiplier): the peak went from
+    // 5.5125 to 8.5036774 per mg and the shape is unchanged, so every reference value of the earlier model is scaled by
+    // 8.5036774 / 5.5125 = 1.5426172.
     @Test
-    fun testIsocaproateBasicModelWithMultiplier() = check(
+    fun testIsocaproateBasicModelAnchored() = check(
         "Test Iso 100 mg / 7 d", "test-iso", 100.0, 168.0, 4,
         listOf(
-            0 to 0.0, 1 to 45.248, 6 to 227.165, 12 to 372.418, 27 to 545.786, 28 to 550.737, 29 to 545.63, 48 to 457.111,
-            167 to 150.847, 600 to 368.834, 839 to 39.793,
+            0 to 0.0, 1 to 69.8, 6 to 350.429, 12 to 574.498, 27 to 841.939, 28 to 849.576, 29 to 841.698, 48 to 705.147,
+            167 to 232.699, 600 to 568.97, 839 to 61.385,
         ),
     )
 
@@ -229,7 +234,8 @@ class PkSheetGoldenTest {
         assertSteady("test-cyp", 200.0, 168.0, 1321.194, 1027.774, 1163.272)
         assertSteady("test-prop", 100.0, 48.0, 3527.078, 1885.385, 2636.460)
         assertSteady("npp", 100.0, 48.0, 2031.741, 1522.086, 1766.201)
-        assertSteady("tren-enan", 400.0, 168.0, 9836.650, 8137.903, 9244.312)
+        // Tren E: the earlier references 9836.650 / 8137.903 / 9244.312 scaled by 3/22 (anchored in presets-2026-10d).
+        assertSteady("tren-enan", 400.0, 168.0, 1341.361, 1109.714, 1260.588)
         assertSteady("estradiol-cyp", 5.0, 168.0, 19.253, 5.983, 11.479)
         assertSteady("estradiol-val", 5.0, 120.0, 43.854, 21.128, 32.624)
         assertSteady("test-gel", 50.0, 24.0, 1070.791, 935.07, 1001.747)

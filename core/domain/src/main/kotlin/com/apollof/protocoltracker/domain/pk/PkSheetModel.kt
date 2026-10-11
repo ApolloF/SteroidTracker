@@ -11,7 +11,10 @@ import com.apollof.protocoltracker.domain.pk.PkSheet.SheetRow
  * - Advanced (study Cmax and Tmax): rises linearly to `M × Cmax × dose` at Tmax, then halves every half-life.
  *   Bioavailability is not used.
  * - Basic (no Cmax): first-order absorption with a half-time of t½ / 8, so Tmax = 3/8 t½, towards
- *   `14 × M × F × dose`, which it reaches 87.5 % of at Tmax; then halves every half-life.
+ *   `14 × M × F × dose`, which it reaches 87.5 % of at Tmax; then halves every half-life. That peak does not depend
+ *   on the half-life, so the area under a dose would grow with it. A row with [SheetRow.exposureAnchors] (an ester
+ *   whose hormone has a better-anchored sibling) instead gets the peak that gives the same exposure per unit of
+ *   hormone as the mean of its anchors; the shape (t½, Tmax, rise) stays.
  * M is the compound's multiplier. Doses add up. Levels are ng/dL per unit dosed in the sheet's own dose unit.
  */
 object PkSheetModel {
@@ -37,15 +40,35 @@ object PkSheetModel {
                 levelUnit = unit,
                 rise = Rise.LINEAR,
             )
-            Model.BASIC -> PkParams(
-                halfLifeH = halfLifeD * HOURS_PER_DAY,
-                tmaxH = halfLifeD * BASIC_TMAX_PER_HALF_LIFE * HOURS_PER_DAY,
-                peakPerUnit = BASIC_SCALE * row.multiplier * requireNotNull(row.bioavailability) { "${row.compound}: no F" } *
-                    PkParams.FIRST_ORDER_PEAK_SHARE * perBaseUnit,
-                activeFraction = fraction,
-                levelUnit = unit,
-                rise = Rise.FIRST_ORDER,
-            )
+            Model.BASIC -> {
+                val shape = basicShape(row)
+                val peak = if (row.exposureAnchors.isEmpty()) shape.peakPerUnit!! else {
+                    val target = row.exposureAnchors.map(::exposurePerUnitHormone).average()
+                    target * requireNotNull(row.bioavailability) / shape.areaPerPeakH
+                }
+                shape.copy(peakPerUnit = peak * perBaseUnit, activeFraction = fraction, levelUnit = unit)
+            }
         }
+    }
+
+    /**
+     * Area under one dose's curve per unit of hormone (ng/dL·h per sheet dose unit): the row's own unanchored curve,
+     * `peakPerUnit × areaPerPeakH ÷ F`. The dose is the ester, of which a share F is hormone.
+     */
+    fun exposurePerUnitHormone(row: SheetRow): Double {
+        val own = pk(row.copy(exposureAnchors = emptyList()))
+        return own.peakPerUnit!! * own.areaPerPeakH / requireNotNull(row.bioavailability) { "${row.compound}: no F" }
+    }
+
+    /** The plain Basic curve (peak `14 × M × F × 87.5 %`). */
+    private fun basicShape(row: SheetRow): PkParams {
+        val halfLifeD = requireNotNull(row.halfLifeD) { "${row.compound}: no half-life" }
+        return PkParams(
+            halfLifeH = halfLifeD * HOURS_PER_DAY,
+            tmaxH = halfLifeD * BASIC_TMAX_PER_HALF_LIFE * HOURS_PER_DAY,
+            peakPerUnit = BASIC_SCALE * row.multiplier * requireNotNull(row.bioavailability) { "${row.compound}: no F" } *
+                PkParams.FIRST_ORDER_PEAK_SHARE,
+            rise = Rise.FIRST_ORDER,
+        )
     }
 }
