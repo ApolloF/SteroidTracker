@@ -23,12 +23,12 @@ jobs:
       - name: Unit tests, lint, debug APKs (foss and play)
         run: ./gradlew :core:domain:test testFossDebugUnitTest testPlayDebugUnitTest lintFossDebug lintPlayDebug assembleFossDebug assemblePlayDebug --stacktrace
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: steroidtracker-debug-apk
           path: app/build/outputs/apk/*/debug/*.apk
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: test-reports
@@ -60,7 +60,7 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: ./gradlew connectedFossDebugAndroidTest connectedPlayDebugAndroidTest --stacktrace
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: smoke-reports
@@ -94,7 +94,7 @@ jobs:
         run: ./gradlew assembleFossRelease bundlePlayRelease --stacktrace
 
       # The Play bundle is uploaded to Play Console by hand; it is never a GitHub release asset.
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: steroidtracker-play-bundle
           path: app/build/outputs/bundle/playRelease/*.aab
