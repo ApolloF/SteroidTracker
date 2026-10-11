@@ -6,7 +6,15 @@ Written 2026-09-27 at HEAD 8b24b19; trimmed the same day (plan change below); ne
 
 ---
 
-## Handover 2026-10-03, night (read first)
+## Handover 2026-10-11: Google Play (read first)
+
+Branch `ApolloF/playstore` = the Play flavour work of PR #11 (`feat/play-flavour`, merged in) plus the release-readiness pass. **Flavours are back** (`foss`, `play`; AGENTS.md › Layout), so the gate below and in §1 is now `:core:domain:test testFossDebugUnitTest testPlayDebugUnitTest lintFossDebug lintPlayDebug assembleFossDebug assemblePlayDebug`, and the on-device check is `connectedFossDebugAndroidTest connectedPlayDebugAndroidTest`.
+- PLAY-1 · Settings › Privacy policy shows the policy in the app (Play requires its link or text in the app). foss shows `PRIVACY.md` word for word; play has its own text (`app/src/play/res/raw/privacy_policy.md`: Pro purchase, billing permissions, no offline claim). `PRIVACY.md` no longer lists the network-state permission foss dropped. Tests: `PolicyTextTest`, `FossPrivacyPolicyTest`, `PlayPrivacyPolicyTest`.
+- PLAY-2 · CI `smoke` runs `SmokeTest` in both flavours.
+- PLAY-3 · `docs/PLAY.md`: open owner decisions, Play Console setup, App content answers (data safety, content rating, health declaration), listing text, screenshot rules, the per-release steps.
+- Owner next: the decisions and console steps in `docs/PLAY.md` §1–3; publish the Play policy at a neutral URL.
+
+## Handover 2026-10-03, night
 
 Branch `pol-1-layout-and-tests` (PR, no tag), on v0.5.1. Done: **POL-1** (narrow, large-font and dark pass) with the clipping fixes it confirmed (POL-6, POL-20, POL-25, POL-19's title and stacked dates; POL-22 not needed), **domain coverage** (PK, schedule, plan rules, BloodworkRules) and an **ICU regex check** on the JVM and on a device, which found a device-only import crash (§7). Rows in §6.
 - `ScreenshotTest.layoutPassFont100/130/200` walk every tab, sheet, editor and Settings page at 360 dp (light and dark at 100 % and 130 %, light at 200 %, the largest Android 14+ font).

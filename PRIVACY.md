@@ -1,6 +1,6 @@
 # SteroidTracker privacy policy
 
-Last updated: 4 October 2026
+Last updated: 11 October 2026
 
 SteroidTracker is an Android app for logging doses, blood pressure, symptoms and lab results. It works fully offline: it doesn't ask for Android's internet permission, so it cannot send anything anywhere. There is no account, no ads, no analytics and no crash reporting. ApolloF receives no data from the app.
 
@@ -20,8 +20,8 @@ SteroidTracker is made and published by ApolloF, in the Netherlands. Contact: me
 
 - **Notifications, exact alarms and vibration:** for dose reminders at the times you set.
 - **Run at startup:** to set your reminders again after the phone restarts or the app updates.
-- **Keep awake, foreground service and view network connections:** added by WorkManager, the Android library the app uses to re-check reminders in the background about every 12 hours. The network permission only shows whether the phone is online; without the internet permission the app can't use the connection.
-- No internet, location, contacts, camera, microphone or storage permission.
+- **Keep awake and foreground service:** added by WorkManager, the Android library the app uses to re-check reminders in the background about every 12 hours.
+- No internet, network state, location, contacts, camera, microphone or storage permission.
 
 ## Files you export
 
