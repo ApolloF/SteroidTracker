@@ -45,7 +45,7 @@ enum class LevelRange(val label: String, val days: Long) {
     W2("2W", 14), M1("1M", 30), M3("3M", 91), M6("6M", 182), Y1("1Y", 365)
 }
 
-data class LevelWindow(val range: LevelRange = LevelRange.M1, val mode: LevelMode = LevelMode.COMBINED, val centerOffsetMs: Long = 0, val zoom: Double = 1.0)
+data class LevelWindow(val range: LevelRange = LevelRange.M1, val centerOffsetMs: Long = 0, val zoom: Double = 1.0)
 
 data class PhaseBand(val name: String, val colorArgb: Long, val startMs: Long, val endMs: Long)
 
@@ -77,6 +77,8 @@ data class LevelsState(
     /** Compounds in use without reliable level data. */
     val unplottable: List<String> = emptyList(),
     val window: LevelWindow = LevelWindow(),
+    /** Which doses the charts draw; a setting, so the overview and every detail screen show the same. */
+    val mode: LevelMode = LevelMode.COMBINED,
     val fromMs: Long = 0,
     val toMs: Long = 0,
     val nowMs: Long = 0,
@@ -125,9 +127,10 @@ class LevelsViewModel(private val c: AppContainer, private val focus: String? = 
         )
     }
 
-    /** Metrics don't depend on the visible window, so they are recomputed only when data or mode change. */
-    private val metrics: Flow<Map<String, LevelMetrics?>> = combine(inputs, window.map { it.mode }) { input, mode ->
+    /** Metrics don't depend on the visible window, so they are recomputed only when data or settings (mode) change. */
+    private val metrics: Flow<Map<String, LevelMetrics?>> = inputs.map { input ->
         val now = c.clock()
+        val mode = input.settings.levelMode
         input.groups.filter { focus == null || it.name == focus }.associate { g ->
             val adjust = input.settings.levelAdjustments
             val m = Levels.metrics(g.name, input.protocol.compounds, input.logs, input.protocol.phases, input.protocol.items, mode, now, c.zone(), input.slotTimes, adjust)
@@ -154,7 +157,7 @@ class LevelsViewModel(private val c: AppContainer, private val focus: String? = 
         }
         val views = shown.mapNotNull { g ->
             val raw = Levels.series(
-                g.name, input.protocol.compounds, input.logs, input.protocol.phases, input.protocol.items, w.mode, from, to, now, zone, input.slotTimes,
+                g.name, input.protocol.compounds, input.logs, input.protocol.phases, input.protocol.items, input.settings.levelMode, from, to, now, zone, input.slotTimes,
                 points = if (focus != null) 900 else 600, colorArgb = g.colorArgb, adjustments = input.settings.levelAdjustments,
             ) ?: return@mapNotNull null
             val display = levelDisplay(raw.scale, g.name, input.settings.labUnits)
@@ -195,13 +198,17 @@ class LevelsViewModel(private val c: AppContainer, private val focus: String? = 
             others = input.groups.filter { !it.current },
             opened = openedGroups,
             unplottable = input.unplottable,
-            window = w, fromMs = from.toEpochMilli(), toMs = to.toEpochMilli(), nowMs = now.toEpochMilli(),
+            window = w, mode = input.settings.levelMode, fromMs = from.toEpochMilli(), toMs = to.toEpochMilli(), nowMs = now.toEpochMilli(),
             views = views, bands = bands, doses = doses,
         )
     }.conflate().flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LevelsState())
 
-    fun setRange(range: LevelRange) = window.update { LevelWindow(range = range, mode = it.mode) }
-    fun setMode(mode: LevelMode) = window.update { it.copy(mode = mode) }
+    fun setRange(range: LevelRange) = window.update { LevelWindow(range = range) }
+
+    /** Chooses what every Levels chart draws; kept in the settings, so the overview and details agree. */
+    fun setMode(mode: LevelMode) {
+        viewModelScope.launch { c.settings.update { it.copy(levelMode = mode) } }
+    }
 
     /** Shows or hides the chart of a group that is not in use now. */
     fun toggleOther(group: String) = opened.update { if (group in it) it - group else it + group }

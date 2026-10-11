@@ -5,6 +5,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.apollof.protocoltracker.ProtocolTrackerApp
 import com.apollof.protocoltracker.domain.pk.LabUnits
 import com.apollof.protocoltracker.domain.pk.LevelAdjustments
+import com.apollof.protocoltracker.domain.pk.LevelMode
 import java.time.Instant
 import java.time.LocalTime
 import kotlin.test.assertEquals
@@ -27,12 +28,13 @@ class SettingsBackupTest {
                 snoozeMinutes = 30, pureBlack = true, syringeUnits = true, labUnits = LabUnits.SI,
                 slotTimes = it.slotTimes.copy(dayStart = LocalTime.of(2, 0)),
                 levelAdjustments = LevelAdjustments.of("Testosterone" to 15, "Estradiol" to -40),
+                levelMode = LevelMode.RECORDED,
             )
         }
         val saved = store.current()
         val map = store.exportMap()
         store.update {
-            it.copy(snoozeMinutes = 60, pureBlack = false, syringeUnits = false, labUnits = LabUnits.CONVENTIONAL, levelAdjustments = LevelAdjustments.NONE)
+            it.copy(snoozeMinutes = 60, pureBlack = false, syringeUnits = false, labUnits = LabUnits.CONVENTIONAL, levelAdjustments = LevelAdjustments.NONE, levelMode = LevelMode.PLANNED)
         }
 
         store.importMap(map)
@@ -58,6 +60,7 @@ class SettingsBackupTest {
                 "day_start" to "13:00",
                 "unknown_key" to "x",
                 "lab_units" to "PARSECS",
+                "level_mode" to "SOMETIMES",
                 "level_adjustments" to "{\"Testosterone\": 400, \"Estradiol\": \"x\"}",
             ),
         )
@@ -66,6 +69,7 @@ class SettingsBackupTest {
         assertEquals(defaults.pureBlack, read.pureBlack)
         assertEquals(defaults.slotTimes.dayStart, read.slotTimes.dayStart)
         assertEquals(defaults.labUnits, read.labUnits)
+        assertEquals(LevelMode.COMBINED, read.levelMode)
         assertEquals(LevelAdjustments.of("Testosterone" to 100), read.levelAdjustments)
         assertFalse("unknown_key" in store.exportMap())
     }

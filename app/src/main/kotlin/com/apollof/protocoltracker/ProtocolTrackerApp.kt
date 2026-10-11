@@ -36,9 +36,14 @@ open class ProtocolTrackerApp : Application(), Configuration.Provider {
         super.onCreate()
         container = createContainer()
         Notifications.createChannels(this)
+        // A failure here (full disk, an undecodable row) must not crash every start, alarms and widget updates included.
         scope.launch {
-            container.repository.seedPresets()
-            container.repository.rekeyExactTimeLogs()
+            try {
+                container.repository.seedPresets()
+                container.repository.rekeyExactTimeLogs()
+            } catch (e: Exception) {
+                Log.e("ProtocolTrackerApp", "Startup upkeep failed", e)
+            }
         }
         // Any change to plan, logs or settings re-plans alarms and redraws the widget.
         scope.launch {

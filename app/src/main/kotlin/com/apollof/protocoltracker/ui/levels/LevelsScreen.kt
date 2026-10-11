@@ -147,8 +147,8 @@ fun LevelsScreen(onOpenSettings: () -> Unit, onOpenGroup: (String) -> Unit, onOp
             }
             item(key = "controls") {
                 Column(Modifier.padding(horizontal = Spacing.screen, vertical = Spacing.md), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                    // The overview stays on Logged + plan; the mode row lives on the detail screen.
                     Segmented(LevelRange.entries, state.window.range, { it.label }) { vm.setRange(it); cursor = null }
+                    ModeRow(state.mode, vm::setMode)
                 }
             }
             state.views.forEach { view ->
@@ -176,6 +176,11 @@ private fun modeLabel(mode: LevelMode) = when (mode) {
     LevelMode.RECORDED -> "Logged"
     LevelMode.PLANNED -> "Plan only"
 }
+
+/** What the charts draw. One setting for the whole tab: the overview and every detail screen follow it. */
+@Composable
+private fun ModeRow(mode: LevelMode, onMode: (LevelMode) -> Unit) =
+    Segmented(listOf(LevelMode.COMBINED, LevelMode.RECORDED, LevelMode.PLANNED), mode, ::modeLabel, onSelect = onMode)
 
 /** Compounds in use with their current estimate; tapping one scrolls to its chart. */
 @Composable
@@ -277,7 +282,7 @@ fun LevelDetailScreen(group: String, onBack: () -> Unit) {
             item(key = "controls") {
                 Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                     Segmented(LevelRange.entries, state.window.range, { it.label }) { vm.setRange(it); cursor = null }
-                    Segmented(listOf(LevelMode.COMBINED, LevelMode.RECORDED, LevelMode.PLANNED), state.window.mode, ::modeLabel) { vm.setMode(it) }
+                    ModeRow(state.mode, vm::setMode)
                 }
             }
             if (!state.loading && view == null) item(key = "empty") {

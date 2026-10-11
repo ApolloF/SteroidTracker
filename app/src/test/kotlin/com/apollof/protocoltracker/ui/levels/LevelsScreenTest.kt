@@ -26,6 +26,7 @@ import com.apollof.protocoltracker.domain.model.Formulation
 import com.apollof.protocoltracker.domain.model.PlanItem
 import com.apollof.protocoltracker.domain.model.Schedule
 import com.apollof.protocoltracker.domain.model.Timing
+import com.apollof.protocoltracker.domain.pk.LevelMode
 import com.apollof.protocoltracker.ui.theme.ProtocolTrackerTheme
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
@@ -94,6 +95,20 @@ class LevelsScreenTest {
         compose.onNode(hasText("Testosterone") and clickLabel("Open details")).tap()
         compose.waitUntil(TIMEOUT_MS) { opened != null }
         assertEquals("Testosterone", opened)
+    }
+
+    /** The mode row on the overview sets the mode for the whole tab: a setting the detail screens read too. */
+    @Test
+    fun overviewModeRowSetsTheModeForTheWholeTab() {
+        compose.setContent { ProtocolTrackerTheme { LevelsScreen(onOpenSettings = {}, onOpenGroup = {}) } }
+        waitFor("Plan only")
+        // The row reads the mode back from the settings store, so a selected segment means the write landed.
+        fun selected(label: String) = hasText(label) and SemanticsMatcher.expectValue(SemanticsProperties.Selected, true)
+        compose.onNodeWithText("Plan only").tap()
+        compose.waitUntil(TIMEOUT_MS) { compose.onAllNodes(selected("Plan only")).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("Logged").tap()
+        compose.waitUntil(TIMEOUT_MS) { compose.onAllNodes(selected("Logged")).fetchSemanticsNodes().isNotEmpty() }
+        assertEquals(LevelMode.RECORDED, runBlocking { container.settings.current().levelMode })
     }
 
     private companion object {
