@@ -34,7 +34,7 @@ jobs:
           name: test-reports
           path: "**/build/reports/"
 
-  # SmokeTest on an emulator: opens every screen and fails on any crash (JVM and Robolectric tests
+  # SmokeTest on an emulator, in both flavours: opens every screen and fails on any crash (JVM and Robolectric tests
   # once missed a crash every phone hit).
   smoke:
     runs-on: ubuntu-latest
@@ -59,7 +59,7 @@ jobs:
           arch: x86_64
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
-          script: ./gradlew connectedFossDebugAndroidTest --stacktrace
+          script: ./gradlew connectedFossDebugAndroidTest connectedPlayDebugAndroidTest --stacktrace
       - uses: actions/upload-artifact@v5
         if: failure()
         with:
