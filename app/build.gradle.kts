@@ -143,3 +143,9 @@ dependencies {
     androidTestImplementation(libs.espresso.core)
     androidTestImplementation(libs.kotlin.test)
 }
+
+// The flavours' Robolectric suites never run at the same time: side by side on a CI runner they doubled the load,
+// and screens missed their 30 s waits in random tests.
+tasks.matching { it.name.startsWith("testPlay") && it.name.endsWith("UnitTest") }.configureEach {
+    mustRunAfter(tasks.matching { it.name.startsWith("testFoss") && it.name.endsWith("UnitTest") })
+}
