@@ -3,8 +3,10 @@ package com.apollof.protocoltracker.data
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.apollof.protocoltracker.ProtocolTrackerApp
+import com.apollof.protocoltracker.domain.entitlement.Feature
 import com.apollof.protocoltracker.domain.pk.LabUnits
 import com.apollof.protocoltracker.domain.pk.LevelAdjustments
+import com.apollof.protocoltracker.domain.pk.LevelMode
 import java.time.Instant
 import java.time.LocalTime
 import kotlin.test.assertEquals
@@ -27,16 +29,46 @@ class SettingsBackupTest {
                 snoozeMinutes = 30, pureBlack = true, syringeUnits = true, labUnits = LabUnits.SI,
                 slotTimes = it.slotTimes.copy(dayStart = LocalTime.of(2, 0)),
                 levelAdjustments = LevelAdjustments.of("Testosterone" to 15, "Estradiol" to -40),
+                levelMode = LevelMode.RECORDED,
             )
         }
         val saved = store.current()
         val map = store.exportMap()
         store.update {
-            it.copy(snoozeMinutes = 60, pureBlack = false, syringeUnits = false, labUnits = LabUnits.CONVENTIONAL, levelAdjustments = LevelAdjustments.NONE)
+            it.copy(snoozeMinutes = 60, pureBlack = false, syringeUnits = false, labUnits = LabUnits.CONVENTIONAL, levelAdjustments = LevelAdjustments.NONE, levelMode = LevelMode.PLANNED)
         }
 
         store.importMap(map)
         assertEquals(saved, store.current())
+    }
+
+    @Test
+    fun trialStartIsSetOnlyOnce() = runBlocking {
+        val first = Instant.parse("2026-10-01T08:00:00Z")
+        store.startTrials(setOf(Feature.LEVELS_RANGE), first)
+        store.startTrials(setOf(Feature.LEVELS_RANGE, Feature.LEVELS_LAB_OVERLAY), first.plusSeconds(3600))
+        assertEquals(mapOf(Feature.LEVELS_RANGE to first, Feature.LEVELS_LAB_OVERLAY to first.plusSeconds(3600)), store.trialStarts.first())
+    }
+
+    @Test
+    fun backupKeepsTheOriginalTrialStart() = runBlocking {
+        val original = Instant.parse("2026-09-01T08:00:00Z")
+        store.startTrials(setOf(Feature.LEVELS_RANGE), original)
+        val map = store.exportMap()
+        assertTrue("trial_started" in map)
+        // A reinstall starts a new trial; restoring the backup brings the original start back.
+        store.importMap(emptyMap())
+        store.startTrials(setOf(Feature.LEVELS_RANGE), original.plusSeconds(86_400 * 30))
+        store.importMap(map)
+        assertEquals(original, store.trialStarts.first()[Feature.LEVELS_RANGE])
+    }
+
+    @Test
+    fun olderBackupWithoutTrialsKeepsTheDevicesStart() = runBlocking {
+        val device = Instant.parse("2026-10-02T08:00:00Z")
+        store.startTrials(setOf(Feature.LEVELS_RANGE), device)
+        store.importMap(mapOf("snooze_minutes" to "30"))
+        assertEquals(mapOf(Feature.LEVELS_RANGE to device), store.trialStarts.first())
     }
 
     @Test
@@ -58,6 +90,7 @@ class SettingsBackupTest {
                 "day_start" to "13:00",
                 "unknown_key" to "x",
                 "lab_units" to "PARSECS",
+                "level_mode" to "SOMETIMES",
                 "level_adjustments" to "{\"Testosterone\": 400, \"Estradiol\": \"x\"}",
             ),
         )
@@ -66,6 +99,7 @@ class SettingsBackupTest {
         assertEquals(defaults.pureBlack, read.pureBlack)
         assertEquals(defaults.slotTimes.dayStart, read.slotTimes.dayStart)
         assertEquals(defaults.labUnits, read.labUnits)
+        assertEquals(LevelMode.COMBINED, read.levelMode)
         assertEquals(LevelAdjustments.of("Testosterone" to 100), read.levelAdjustments)
         assertFalse("unknown_key" in store.exportMap())
     }
