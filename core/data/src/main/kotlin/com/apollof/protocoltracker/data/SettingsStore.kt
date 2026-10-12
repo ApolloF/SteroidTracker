@@ -11,9 +11,11 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.preferencesDataStoreFile
+import com.apollof.protocoltracker.domain.entitlement.Feature
 import com.apollof.protocoltracker.domain.model.DaySlot
 import com.apollof.protocoltracker.domain.pk.LabUnits
 import com.apollof.protocoltracker.domain.pk.LevelAdjustments
+import com.apollof.protocoltracker.domain.pk.LevelMode
 import com.apollof.protocoltracker.domain.schedule.SlotTimes
 import com.apollof.protocoltracker.domain.units.DisplayFormat
 import kotlinx.coroutines.CoroutineScope
@@ -91,6 +93,8 @@ data class Settings(
     val syringeUnits: Boolean = false,
     /** The user's scaling of level estimates by group (Levels › a group › Adjust level). */
     val levelAdjustments: LevelAdjustments = LevelAdjustments.NONE,
+    /** Which doses the Levels charts draw (Logged + plan, Logged, Plan only); one choice for the whole tab. */
+    val levelMode: LevelMode = LevelMode.COMBINED,
 ) {
     /** Resolves the "System" choices; [system24Hour] comes from the device setting. */
     fun displayFormat(system24Hour: Boolean): DisplayFormat = DisplayFormat(
@@ -128,12 +132,24 @@ class SettingsStore(context: Context) {
 
         private val STRING_KEYS = setOf(
             "theme", "palette", "daily_summary_time", "check_time", "week_bar", "any_time_reminder", "day_start", "motion", "time_format", "date_order", "lab_units",
-            "level_adjustments",
+            "level_adjustments", "level_mode", TRIAL_STARTED,
         ) + DaySlot.entries.map { "slot_${it.name}" }
 
         // DataStore allows one active instance per file. The app creates one store per process; when a store is
         // created again for the same file (a new Application in the same process, as in tests), the old one is closed.
         private val scopes = HashMap<String, CoroutineScope>()
+
+        /** When each trial started, as "FEATURE=epochMillis;…"; rides in backups so a restore keeps the start. */
+        private const val TRIAL_STARTED = "trial_started"
+
+        internal fun decodeTrials(text: String?): Map<Feature, Instant> = text.orEmpty().split(';').mapNotNull { part ->
+            val (name, ms) = part.split('=').takeIf { it.size == 2 } ?: return@mapNotNull null
+            val feature = Feature.entries.firstOrNull { it.name == name } ?: return@mapNotNull null
+            ms.toLongOrNull()?.let { feature to Instant.ofEpochMilli(it) }
+        }.toMap()
+
+        internal fun encodeTrials(trials: Map<Feature, Instant>): String =
+            trials.entries.sortedBy { it.key }.joinToString(";") { "${it.key.name}=${it.value.toEpochMilli()}" }
 
         @Synchronized
         private fun open(context: Context): DataStore<Preferences> {
@@ -163,7 +179,10 @@ class SettingsStore(context: Context) {
         val labUnits = stringPreferencesKey("lab_units")
         val syringeUnits = booleanPreferencesKey("syringe_units")
         val levelAdjustments = stringPreferencesKey("level_adjustments")
+        val levelMode = stringPreferencesKey("level_mode")
         fun slot(slot: DaySlot) = stringPreferencesKey("slot_${slot.name}")
+
+        val trialStarted = stringPreferencesKey(TRIAL_STARTED)
 
         /** When the first-run notice was acknowledged. State of this device: never exported, kept on a restore. */
         val noticeAcknowledgedAt = longPreferencesKey("notice_acknowledged_at")
@@ -202,6 +221,7 @@ class SettingsStore(context: Context) {
             labUnits = enum(Keys.labUnits, defaults.labUnits),
             syringeUnits = this[Keys.syringeUnits] ?: defaults.syringeUnits,
             levelAdjustments = LevelAdjustments.decode(this[Keys.levelAdjustments]),
+            levelMode = enum(Keys.levelMode, defaults.levelMode),
             slotTimes = SlotTimes(
                 times = DaySlot.entries.mapNotNull { slot -> time(Keys.slot(slot))?.let { slot to it } }.toMap(),
                 anyTimeReminder = time(Keys.anyTimeReminder) ?: defaults.slotTimes.anyTimeReminder,
@@ -219,6 +239,18 @@ class SettingsStore(context: Context) {
         store.edit { it[Keys.noticeAcknowledgedAt] = at.toEpochMilli() }
     }
 
+    /** When each feature's free trial started (entitlement policy); a feature missing has not been opened yet. */
+    val trialStarts: Flow<Map<Feature, Instant>> = store.data.map { decodeTrials(it[Keys.trialStarted]) }
+
+    /** Starts the trials of [features] at [at]; a trial already started keeps its start. */
+    suspend fun startTrials(features: Set<Feature>, at: Instant) {
+        store.edit { p ->
+            val current = decodeTrials(p[Keys.trialStarted])
+            val next = current + (features - current.keys).associateWith { at }
+            if (next != current) p[Keys.trialStarted] = encodeTrials(next)
+        }
+    }
+
     /** Every stored setting this version knows, as text by key, for a backup (keys of removed settings are left out). */
     suspend fun exportMap(): Map<String, String> = store.data.first().asMap().entries.mapNotNull { (key, value) ->
         when {
@@ -231,11 +263,13 @@ class SettingsStore(context: Context) {
     /**
      * Replaces the settings with [map] from a backup. Keys this version does not know and values of the wrong type are
      * left out, so they read as defaults; values out of range fall back when they are read. The notice stays
-     * acknowledged.
+     * acknowledged. Trial starts merge: each trial keeps the earlier of the device's and the backup's start, so an
+     * older backup without them keeps the device's.
      */
     suspend fun importMap(map: Map<String, String>) {
         store.edit { p ->
             val acknowledged = p[Keys.noticeAcknowledgedAt]
+            val trials = decodeTrials(p[Keys.trialStarted])
             p.clear()
             acknowledged?.let { p[Keys.noticeAcknowledgedAt] = it }
             for ((name, text) in map) {
@@ -245,6 +279,9 @@ class SettingsStore(context: Context) {
                     in STRING_KEYS -> p[stringPreferencesKey(name)] = text
                 }
             }
+            val restored = decodeTrials(p[Keys.trialStarted])
+            val merged = (trials.keys + restored.keys).associateWith { f -> listOfNotNull(trials[f], restored[f]).min() }
+            if (merged.isEmpty()) p.remove(Keys.trialStarted) else p[Keys.trialStarted] = encodeTrials(merged)
         }
     }
 
@@ -268,6 +305,7 @@ class SettingsStore(context: Context) {
             p[Keys.labUnits] = next.labUnits.name
             p[Keys.syringeUnits] = next.syringeUnits
             next.levelAdjustments.encode().let { if (it.isEmpty()) p.remove(Keys.levelAdjustments) else p[Keys.levelAdjustments] = it }
+            p[Keys.levelMode] = next.levelMode.name
             for (slot in DaySlot.entries) {
                 val time = next.slotTimes.times[slot]
                 if (time == null || time == slot.defaultTime) p.remove(Keys.slot(slot)) else p[Keys.slot(slot)] = time.toString()

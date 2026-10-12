@@ -16,6 +16,9 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.espresso.Espresso
+import androidx.test.espresso.action.ViewActions
+import androidx.test.espresso.matcher.RootMatchers.isDialog
+import androidx.test.espresso.matcher.ViewMatchers.isRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.GrantPermissionRule
@@ -29,6 +32,7 @@ import com.apollof.protocoltracker.domain.model.MarkerResult
 import com.apollof.protocoltracker.domain.model.PlanItem
 import com.apollof.protocoltracker.domain.model.Schedule
 import com.apollof.protocoltracker.domain.model.Timing
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Rule
@@ -43,10 +47,12 @@ import java.time.LocalDate
 /**
  * Runs the real app on a device or emulator and opens every screen and sheet once. JVM and Robolectric tests missed a
  * crash that every phone hit (an Android-only regex error), so this test exists to fail on any crash before a tag.
- * Run with an emulator up: `./gradlew connectedDebugAndroidTest`.
+ * Run with an emulator up: `./gradlew connectedFossDebugAndroidTest` (or `connectedPlayDebugAndroidTest`).
  */
 @RunWith(AndroidJUnit4::class)
 class SmokeTest {
+    /** How the plan's compound shows: "Test C" in foss, "Testosterone cypionate" in play (no common names). */
+    private lateinit var doseName: String
     private val compose = createAndroidComposeRule<MainActivity>()
 
     @get:Rule
@@ -60,6 +66,8 @@ class SmokeTest {
     fun seed(): Unit = runBlocking {
         val container = (InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as ProtocolTrackerApp).container
         container.repository.seedPresets()
+        val compound = container.repository.compounds.first().single { it.id == "preset:test-cyp" }
+        doseName = compound.commonName.ifBlank { compound.displayName }
         container.settings.acknowledgeNotice(Instant.now())
         val daily = Schedule.Daily(listOf(Timing.Slot(DaySlot.MORNING)))
         container.repository.saveItem(
@@ -90,6 +98,15 @@ class SmokeTest {
         compose.waitForIdle()
     }
 
+    /**
+     * Closes the open sheet. A sheet is its own dialog window, and its text shows before that window takes focus;
+     * a plain back press in between went to the activity and closed the app. Espresso waits for the dialog's focus.
+     */
+    private fun closeSheet() {
+        Espresso.onView(isRoot()).inRoot(isDialog()).perform(ViewActions.pressBack())
+        compose.waitForIdle()
+    }
+
     private fun openLogMenu() {
         val log = hasClickAction() and hasAnyDescendant(hasText("Log"))
         waitFor(log, unmerged = true)
@@ -102,12 +119,12 @@ class SmokeTest {
         openLogMenu()
         compose.onNode(hasText(row) and hasClickAction()).click()
         waitForText(shows)
-        back()
+        closeSheet()
     }
 
     @Test
     fun everyScreenOpens() {
-        waitForText("Test C")
+        waitForText(doseName)
 
         logRow("Blood pressure", "Diastolic")
         logRow("Note", "What happened")
@@ -119,16 +136,16 @@ class SmokeTest {
         waitForText("Copy AI prompt")
         back()
         // A planned dose's sheet.
-        compose.onAllNodes(hasText("Test C", substring = true) and clickLabel("Log with details"))[0].click()
+        compose.onAllNodes(hasText(doseName, substring = true) and clickLabel("Log with details"))[0].click()
         waitForText("Plan:")
-        back()
+        closeSheet()
 
         tab("Plan")
         waitForText("per week")
         tab("Levels")
         waitFor(hasText("Testosterone") and clickLabel("Open details"))
         compose.onNode(hasText("Testosterone") and clickLabel("Open details")).click()
-        waitForText("Plan only")
+        waitForText("Doses shown")
         back()
 
         tab("Journal")
@@ -140,7 +157,7 @@ class SmokeTest {
         back()
 
         compose.onNode(hasContentDescription("Settings")).click()
-        val pages = listOf("Appearance", "Units and formats", "Today", "Times of day", "Reminders", "Export and data", "About")
+        val pages = listOf("Appearance", "Units and formats", "Today", "Times of day", "Reminders", "Export and data", "About", "Privacy policy")
         for (page in pages) {
             val row = hasText(page) and hasClickAction()
             waitFor(row)
@@ -151,7 +168,7 @@ class SmokeTest {
         }
         back()
         tab("Today")
-        waitForText("Test C")
+        waitForText(doseName)
     }
 
     private companion object {

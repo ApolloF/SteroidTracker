@@ -5,7 +5,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsNotSelected
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.SemanticsNodeInteraction
@@ -26,6 +26,7 @@ import com.apollof.protocoltracker.domain.model.Formulation
 import com.apollof.protocoltracker.domain.model.PlanItem
 import com.apollof.protocoltracker.domain.model.Schedule
 import com.apollof.protocoltracker.domain.model.Timing
+import com.apollof.protocoltracker.domain.pk.LevelMode
 import com.apollof.protocoltracker.ui.theme.ProtocolTrackerTheme
 import kotlinx.coroutines.runBlocking
 import org.junit.Before
@@ -94,6 +95,26 @@ class LevelsScreenTest {
         compose.onNode(hasText("Testosterone") and clickLabel("Open details")).tap()
         compose.waitUntil(TIMEOUT_MS) { opened != null }
         assertEquals("Testosterone", opened)
+    }
+
+    /** The mode row on the overview sets the mode for the whole tab: a setting the detail screens read too. */
+    @Test
+    fun overviewModeRowSetsTheModeForTheWholeTab() {
+        compose.setContent { ProtocolTrackerTheme { LevelsScreen(onOpenSettings = {}, onOpenGroup = {}) } }
+        waitFor("Doses shown")
+        // The row shows the mode read back from the settings store, so its new label means the write landed.
+        fun choose(label: String) {
+            compose.onNode(clickLabel("Change doses shown")).tap()
+            // The row shows another mode, so the only node with this exact text is the menu item.
+            waitFor(label)
+            compose.onNodeWithText(label).tap()
+            compose.waitUntil(TIMEOUT_MS) {
+                compose.onAllNodes(clickLabel("Change doses shown") and SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, label)).fetchSemanticsNodes().isNotEmpty()
+            }
+        }
+        choose("Plan only")
+        choose("Logged")
+        assertEquals(LevelMode.RECORDED, runBlocking { container.settings.current().levelMode })
     }
 
     private companion object {

@@ -23,7 +23,7 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -39,6 +39,11 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.apollof.protocoltracker.AppContainer
 import com.apollof.protocoltracker.ProtocolTrackerApp
+import com.apollof.protocoltracker.SharedTestApp
+import com.apollof.protocoltracker.billing.AllUnlocked
+import com.apollof.protocoltracker.domain.entitlement.FossPolicy
+import com.apollof.protocoltracker.domain.pk.PresetChannel
+import com.apollof.protocoltracker.R
 import com.apollof.protocoltracker.data.Palette
 import com.apollof.protocoltracker.data.ThemeMode
 import com.apollof.protocoltracker.data.WeekBarMode
@@ -294,7 +299,7 @@ class ScreenshotTest {
         val result = WebExportImport.parse(WebExportSample.JSON, ZoneId.systemDefault())
         var mode by mutableStateOf(ThemeMode.LIGHT)
         compose.setContent { ProtocolTrackerTheme(mode) { WebImportDialog(result, {}, {}) } }
-        waitFor("Import CycleTracker history?")
+        waitFor(ApplicationProvider.getApplicationContext<ProtocolTrackerApp>().getString(R.string.settings_import_history_title))
         save("web-import-dialog-light") { compose.onNode(isDialog()) }
         mode = ThemeMode.DARK
         save("web-import-dialog-dark") { compose.onNode(isDialog()) }
@@ -629,7 +634,7 @@ class ScreenshotTest {
 
         click(hasText("Levels") and hasClickAction()); waitFor("Testosterone"); shot("levels")
         click(hasText("Testosterone") and clickLabel("Open details"))
-        waitFor("Plan only")
+        waitFor("Doses shown")
         shot("level-detail")
         compose.onNodeWithContentDescription("Back").performClick(); waitFor("Testosterone")
 
@@ -637,7 +642,7 @@ class ScreenshotTest {
         openBloodwork(); waitFor("Hematocrit"); shot("journal-bloodwork")
 
         compose.onNodeWithContentDescription("Settings").performClick(); waitFor("Appearance"); shot("settings")
-        for (page in listOf("Appearance", "Units and formats", "Today", "Times of day", "Reminders", "Export and data", "About")) {
+        for (page in listOf("Appearance", "Units and formats", "Today", "Times of day", "Reminders", "Export and data", "About", "Privacy policy")) {
             compose.onNode(hasText(page) and hasClickAction()).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
             compose.waitUntil(15_000) { compose.onAllNodesWithContentDescription("Back").fetchSemanticsNodes().size == 1 && compose.onAllNodesWithText(page).fetchSemanticsNodes().size == 1 }
             shot("settings-" + page.lowercase().replace(' ', '-'))
@@ -671,8 +676,8 @@ private val IMPORT_ANSWER = """
     end
 """.trimIndent()
 
-class ScreenshotApp : ProtocolTrackerApp() {
-    override fun createContainer() = AppContainer(this, clock = { NOW })
+class ScreenshotApp : SharedTestApp() {
+    override fun createContainer() = AppContainer(this, clock = { NOW }, presetChannel = PresetChannel.FOSS, policy = FossPolicy, entitlements = { AllUnlocked })
 
     companion object {
         val NOW: Instant = LocalDateTime.of(2026, 9, 26, 10, 0).atZone(ZoneId.systemDefault()).toInstant()

@@ -6,7 +6,7 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -117,7 +117,7 @@ class LargeFontLayoutTest {
         compose.onNodeWithContentDescription("Back").performClick(); waitFor("per week")
 
         compose.onAllNodes(hasText("Levels") and hasClickAction())[0].performSemanticsAction(SemanticsActions.OnClick); waitFor("Testosterone")
-        compose.onAllNodes(hasText("Testosterone") and clickLabel("Open details"))[0].performSemanticsAction(SemanticsActions.OnClick); waitFor("Plan only")
+        compose.onAllNodes(hasText("Testosterone") and clickLabel("Open details"))[0].performSemanticsAction(SemanticsActions.OnClick); waitFor("Doses shown")
         cut += cutTexts("Level detail")
         compose.onNodeWithContentDescription("Back").performClick(); waitFor("Testosterone")
 
