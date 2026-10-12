@@ -79,11 +79,11 @@ class PkSheetTest {
     }
 
     @Test
-    fun rowsFlaggedWithAMultiplierHaveOneAndOnlyTestEsterRowsAreUnflagged() {
+    fun rowsFlaggedWithAMultiplierHaveOneAndOnlyTheListedRowsAreUnflagged() {
         val rows = PkSheet.rows
         assertTrue(rows.filter { it.multiplierUsed == true }.none { it.multiplier == 1.0 })
         // The model scales these although the sheet says "No" (docs/MODELS.md).
         val unflagged = rows.filter { it.multiplier != 1.0 && it.multiplierUsed != true }
-        assertEquals(listOf(PkSheet.TEST_E, PkSheet.TEST_C, PkSheet.TEST_ISO), unflagged)
+        assertEquals(listOf(PkSheet.TEST_E, PkSheet.TEST_C, PkSheet.TELMISARTAN), unflagged)
     }
 }

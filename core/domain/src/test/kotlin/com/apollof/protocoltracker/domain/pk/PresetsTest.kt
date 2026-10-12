@@ -66,12 +66,17 @@ class PresetsTest {
 
     @Test
     fun basicSheetRowsUseTheBasicModel() {
-        // Tren E: t½ 11 d, F 0.71, no multiplier → Tmax 3/8 t½, peak 14 × F × 87.5 % per mg.
-        val tren = byId("tren-enan").pk!!
-        assertEquals(11 * 24.0, tren.halfLifeH, 1e-9)
-        assertEquals(11 * 24.0 * 3 / 8, tren.tmaxH, 1e-9)
-        assertEquals(14 * 0.71 * 0.875, tren.peakPerUnit!!, 1e-9)
+        // Tren A: t½ 1.5 d, F 0.87, no multiplier → Tmax 3/8 t½, peak 14 × F × 87.5 % per mg.
+        val tren = byId("tren-ace").pk!!
+        assertEquals(1.5 * 24.0, tren.halfLifeH, 1e-9)
+        assertEquals(1.5 * 24.0 * 3 / 8, tren.tmaxH, 1e-9)
+        assertEquals(14 * 0.87 * 0.875, tren.peakPerUnit!!, 1e-9)
         assertEquals(Rise.FIRST_ORDER, tren.rise)
+        // Tren E keeps its shape (t½ 11 d) but its peak is anchored to Tren A's exposure (BasicExposureTest).
+        val trenE = byId("tren-enan").pk!!
+        assertEquals(11 * 24.0, trenE.halfLifeH, 1e-9)
+        assertEquals(11 * 24.0 * 3 / 8, trenE.tmaxH, 1e-9)
+        assertEquals(Rise.FIRST_ORDER, trenE.rise)
         assertEquals(Rise.LINEAR, byId("test-enan").pk!!.rise)
     }
 
@@ -117,5 +122,11 @@ class PresetsTest {
     fun peptidesWithoutHumanDataAreLogOnly() {
         for (id in listOf("bpc-157", "tb-500", "ghk-cu", "melanotan-2", "aod-9604", "mots-c")) assertNull(byId(id).pk, id)
         assertNotNull(byId("semaglutide").pk)
+    }
+
+    @Test
+    fun telmisartan40MgPeaksAtTheStudys40MgArm() {
+        // PMID 17009837: 40 mg → Cmax 163.2 ng/mL. Peaks are ng/dL per mg (1 ng/mL = 100 ng/dL).
+        assertEquals(163.2 * 100, byId("telmisartan").pk!!.peakPerUnit!! * 40, 1e-6)
     }
 }

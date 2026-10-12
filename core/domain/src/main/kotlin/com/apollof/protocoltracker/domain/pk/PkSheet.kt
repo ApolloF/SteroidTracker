@@ -11,7 +11,8 @@ package com.apollof.protocoltracker.domain.pk
  * `PkSheetTest` checks every row here against it.
  *
  * [SheetRow.multiplier] is not a sheet column: the sheet only says whether a multiplier is used. The values are the
- * per-compound multipliers of the model ([PkSheetModel]), which applies them to every curve.
+ * per-compound multipliers of the model ([PkSheetModel]), which applies them to every curve. [SheetRow.exposureAnchors]
+ * is a model choice too.
  * Sheet rows without a preset are listed in docs/MODELS.md.
  */
 object PkSheet {
@@ -35,6 +36,12 @@ object PkSheet {
         val model: Model,
         val multiplierUsed: Boolean?,
         val multiplier: Double,
+        /**
+         * Not a sheet column. Basic esters only: rows whose exposure per unit of hormone the model sets to the mean of
+         * these rows' ([PkSheetModel.exposurePerUnitHormone]); empty = the plain Basic peak. Anchors are declared before
+         * the rows that use them.
+         */
+        val exposureAnchors: List<SheetRow> = emptyList(),
     )
 
     // Test E and Test C: the sheet says "No" multiplier, but the model scales them.
@@ -45,11 +52,12 @@ object PkSheet {
     val TEST_U_CASTOR = SheetRow("Testosterone", "Undecanoate (Caster Oil)", 33.9, 1.187, 10.0, 0.65, Model.ADVANCED, multiplierUsed = false, multiplier = 1.0)
     val TEST_U_MCT = SheetRow("Testosterone", "Undecanoate (MCT Oil)", 20.0, 1.85, 8.5, 0.65, Model.ADVANCED, multiplierUsed = false, multiplier = 1.0)
     val TEST_U_ORAL = SheetRow("Testosterone", "Undecanoate (Oral)", 0.7666666667, 2.4876225, 0.2041666667, 0.0683, Model.ADVANCED, multiplierUsed = true, multiplier = 0.7583841)
-    val TEST_PP = SheetRow("Testosterone", "Phenylpropionate", 2.5, null, null, 0.69, Model.BASIC, multiplierUsed = false, multiplier = 1.0)
-    // Test Iso: the sheet says "No" multiplier, but the model uses 0.6.
-    val TEST_ISO = SheetRow("Testosterone", "Isocaproate", 3.1, null, null, 0.75, Model.BASIC, multiplierUsed = false, multiplier = 0.6)
+    // Test PP, Iso and Dec: the same exposure per mg testosterone as the study-based testosterone esters.
+    private val TEST_ESTERS = listOf(TEST_E, TEST_C, TEST_P)
+    val TEST_PP = SheetRow("Testosterone", "Phenylpropionate", 2.5, null, null, 0.69, Model.BASIC, multiplierUsed = false, multiplier = 1.0, exposureAnchors = TEST_ESTERS)
+    val TEST_ISO = SheetRow("Testosterone", "Isocaproate", 3.1, null, null, 0.75, Model.BASIC, multiplierUsed = false, multiplier = 1.0, exposureAnchors = TEST_ESTERS)
     val TEST_SUSP = SheetRow("Testosterone", "Suspension", 1.375, 5.067, 0.25, 1.0, Model.ADVANCED, multiplierUsed = true, multiplier = 6.0)
-    val TEST_DEC = SheetRow("Testosterone", "Decanoate", 5.6, null, null, 0.65, Model.BASIC, multiplierUsed = false, multiplier = 1.0)
+    val TEST_DEC = SheetRow("Testosterone", "Decanoate", 5.6, null, null, 0.65, Model.BASIC, multiplierUsed = false, multiplier = 1.0, exposureAnchors = TEST_ESTERS)
     // Gel: Cmax per mg of testosterone in the gel applied. Sublingual base: per mg held under the tongue.
     val TEST_GEL = SheetRow("Testosterone", "Gel (Testogel/Androgel)", 2.983333333, 4.44, 0.4166666667, null, Model.ADVANCED, multiplierUsed = false, multiplier = 1.0)
     val TEST_BASE = SheetRow("Testosterone", "Test Base (Sublingual)", 0.02569444444, 1132.0, 0.009722222222, null, Model.ADVANCED, multiplierUsed = false, multiplier = 1.0)
@@ -59,12 +67,12 @@ object PkSheet {
     val PROG_ORAL = SheetRow("Progesterone", "Oral", 0.9491666667, 169.53, 0.0625, null, Model.ADVANCED, multiplierUsed = true, multiplier = 0.06)
     val PROG_VAGINAL = SheetRow("Progesterone", "Vaginal", 0.8608333333, 12.3, 0.25, null, Model.ADVANCED, multiplierUsed = false, multiplier = 1.0)
     val T3 = SheetRow("T3 (Triiodothyronine)", "---", 0.9183333333, 6.92, 0.1041666667, null, Model.ADVANCED, multiplierUsed = false, multiplier = 1.0)
-    val TREN_E = SheetRow("Trenbolone", "Enanthate", 11.0, null, null, 0.71, Model.BASIC, multiplierUsed = false, multiplier = 1.0)
     val TREN_A = SheetRow("Trenbolone", "Acetate", 1.5, null, null, 0.87, Model.BASIC, multiplierUsed = false, multiplier = 1.0)
-    val TREN_HEX = SheetRow("Trenbolone", "Hexahydrobenzylcarbonate", 8.0, null, null, 0.66, Model.BASIC, multiplierUsed = false, multiplier = 1.0)
+    val TREN_E = SheetRow("Trenbolone", "Enanthate", 11.0, null, null, 0.71, Model.BASIC, multiplierUsed = false, multiplier = 1.0, exposureAnchors = listOf(TREN_A))
+    val TREN_HEX = SheetRow("Trenbolone", "Hexahydrobenzylcarbonate", 8.0, null, null, 0.66, Model.BASIC, multiplierUsed = false, multiplier = 1.0, exposureAnchors = listOf(TREN_A))
     val MENT = SheetRow("Trestolone Acetate (MENT)", "---", 0.1555555556, null, null, 0.87, Model.BASIC, multiplierUsed = false, multiplier = 1.0)
     val MAST_P = SheetRow("Masteron", "Propionate", 2.0, null, null, 0.84, Model.BASIC, multiplierUsed = false, multiplier = 1.0)
-    val MAST_E = SheetRow("Masteron", "Enanthate", 4.5, null, null, 0.73, Model.BASIC, multiplierUsed = false, multiplier = 1.0)
+    val MAST_E = SheetRow("Masteron", "Enanthate", 4.5, null, null, 0.73, Model.BASIC, multiplierUsed = false, multiplier = 1.0, exposureAnchors = listOf(MAST_P))
     val PROVIRON = SheetRow("Mesterolone (Proviron)", "---", 0.5208333333, 12.4, 0.06666666667, 0.03, Model.ADVANCED, multiplierUsed = false, multiplier = 1.0)
     val NPP = SheetRow("Nandrolone (Deca/NPP)", "Phenylpropionate", 2.4, 8.91465, 1.0, 0.67, Model.ADVANCED, multiplierUsed = false, multiplier = 1.0)
     val DECA = SheetRow("Nandrolone (Deca/NPP)", "Decanoate", 10.2, 3.99, 1.833, 0.73, Model.ADVANCED, multiplierUsed = false, multiplier = 1.0)
@@ -96,7 +104,10 @@ object PkSheet {
     val CABERGOLINE = SheetRow("Cabergoline", "---", 3.583333333, 4.03, 0.083, 0.465, Model.ADVANCED, multiplierUsed = false, multiplier = 1.0)
     val LETROZOLE = SheetRow("Letrozole", "---", 1.389583333, 45.684, 0.0775, null, Model.ADVANCED, multiplierUsed = false, multiplier = 1.0)
     val NEBIVOLOL = SheetRow("Nebivolol", "---", 0.7054166667, 11.6, 0.1295833333, 0.54, Model.ADVANCED, multiplierUsed = false, multiplier = 1.0)
-    val TELMISARTAN = SheetRow("Telmistartan", "---", 0.9708333333, 770.0625, 0.07083333333, 0.43, Model.ADVANCED, multiplierUsed = false, multiplier = 1.0)
+    // Telmisartan: the sheet's Cmax is the mean per mg of the two arms of PMID 17009837 (40 mg: 163.2 ng/mL, 80 mg:
+    // 905.7 ng/mL). Telmisartan is more than dose-proportional, so the model uses the 40 mg arm (the usual dose):
+    // 163.2 / 40 = 4.08 ng/mL per mg, the sheet's 7.700625 ng/mL per mg × this multiplier.
+    val TELMISARTAN = SheetRow("Telmistartan", "---", 0.9708333333, 770.0625, 0.07083333333, 0.43, Model.ADVANCED, multiplierUsed = false, multiplier = 163.2 / 40 / 7.700625)
     val TADALAFIL = SheetRow("Tadalafil", "---", 0.7083333333, 1725.0, 0.1041666667, null, Model.ADVANCED, multiplierUsed = false, multiplier = 1.0)
     // SARMs (the sheet's "Sarms" category, which also holds cardarine). Ostarine, cardarine and S-23 have no study
     // peak; their multipliers were set to match the other SARMs' levels (sheet notes).
