@@ -93,4 +93,15 @@ class LogicalDayTest {
         assertEquals(taken, sheetStartTime(occ, log(LogStatus.TAKEN, taken), now, LocalDate.parse("2026-09-25"), backfill = false))
         assertEquals(now, sheetStartTime(occ, log(LogStatus.SKIPPED, occ.at), now, LocalDate.parse("2026-09-25"), backfill = false))
     }
+
+    @Test
+    fun aChosenTimeBeforeTheDayStartIsTheNightAfter() {
+        val night = SlotTimes(dayStart = four)
+        val day = LocalDate.parse("2026-09-25")
+        assertEquals(at("2026-09-25", "08:30"), night.atTimeOn(day, LocalTime.of(8, 30), zone))
+        assertEquals(at("2026-09-25", "04:00"), night.atTimeOn(day, four, zone))
+        assertEquals(at("2026-09-26", "01:30"), night.atTimeOn(day, LocalTime.of(1, 30), zone))
+        assertEquals(day, night.dateOf(night.atTimeOn(day, LocalTime.of(1, 30), zone), zone))
+        assertEquals(at("2026-09-25", "01:30"), SlotTimes(dayStart = LocalTime.MIDNIGHT).atTimeOn(day, LocalTime.of(1, 30), zone))
+    }
 }

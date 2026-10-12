@@ -30,6 +30,10 @@ fun SlotTimes.dateOf(at: Instant, zone: ZoneId): LocalDate = logicalDate(at, zon
 
 fun SlotTimes.dayStartOf(date: LocalDate, zone: ZoneId): Instant = logicalDayStart(date, zone, dayStart)
 
+/** [time] on the logical day [date]: a time before the day start is the night after (1:00 with a 4:00 day start). */
+fun SlotTimes.atTimeOn(date: LocalDate, time: LocalTime, zone: ZoneId): Instant =
+    ZonedDateTime.of(if (time < dayStart) date.plusDays(1) else date, time, zone).toInstant()
+
 /** True when [at] falls within the logical day [date]. */
 fun SlotTimes.isOn(at: Instant, date: LocalDate, zone: ZoneId): Boolean = at >= dayStartOf(date, zone) && at < dayStartOf(date.plusDays(1), zone)
 
