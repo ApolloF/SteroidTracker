@@ -42,6 +42,12 @@ class AppContainer(
     val categoryLabels = CategoryLabels(appContext.resources)
     /** The launcher label, which differs per flavour: report titles and export file names use it. */
     val appName: String = appContext.getString(R.string.app_name)
+    val upkeep = StartupUpkeep(
+        listOf(
+            StartupUpkeep.Step("updating presets") { repository.seedPresets() },
+            StartupUpkeep.Step("updating log times") { repository.rekeyExactTimeLogs() },
+        ),
+    )
 }
 
 val Context.container: AppContainer get() = (applicationContext as ProtocolTrackerApp).container

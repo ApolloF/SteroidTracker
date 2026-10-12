@@ -5,7 +5,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -82,6 +82,9 @@ class LevelsLimitedScreenTest {
         compose.onNodeWithText("Without Pro, charts reach back 14 days", substring = true).assertExists()
         compose.onNodeWithText("Estimates:", substring = true).assertExists()
         assertEquals(emptyList(), compose.cutTexts())
+        // At this width the range row is a menu ("Range"); 1Y is past the free days, so it opens the paywall.
+        compose.onNode(SemanticsMatcher("opens the range menu") { it.config.getOrNull(SemanticsActions.OnClick)?.label == "Change range" }).performClick()
+        compose.waitUntil(TIMEOUT_MS) { compose.onAllNodesWithText("1Y").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("1Y").performClick()
         compose.onNodeWithText("All charts at once with Pro").performClick()
         compose.waitForIdle()

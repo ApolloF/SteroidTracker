@@ -173,7 +173,10 @@ class LevelsViewModel(private val c: AppContainer, private val focus: String? = 
 
     private val accessFlow = c.gate.all.map { LevelsAccess.of(it) }.distinctUntilChanged()
     private val access: StateFlow<LevelsAccess?> = accessFlow.stateIn(viewModelScope, SharingStarted.Eagerly, null)
-    private val shownWindow = combine(window, accessFlow) { w, a -> w.limitedTo(a) to a }
+    // The mode is a setting, so the overview and every detail screen draw the same doses.
+    private val shownWindow = combine(window, accessFlow, c.settings.settings.map { it.levelMode }.distinctUntilChanged()) { w, a, mode ->
+        w.copy(mode = mode).limitedTo(a) to a
+    }
     private val picks = combine(opened, selected) { o, s -> o to s }
 
     init {
@@ -289,10 +292,10 @@ class LevelsViewModel(private val c: AppContainer, private val focus: String? = 
         }
     }
 
-    /** Switches the mode, or opens the paywall for Logged and Plan only when the gate leaves them out. */
+    /** Switches the mode for the whole tab (a setting), or opens the paywall for Logged and Plan only when the gate leaves them out. */
     fun setMode(mode: LevelMode) {
         viewModelScope.launch {
-            if (mode == LevelMode.COMBINED || accessNow().modes) window.update { it.copy(mode = mode) } else _paywall.value = Feature.LEVELS_PLANNED_VS_LOGGED
+            if (mode == LevelMode.COMBINED || accessNow().modes) c.settings.update { it.copy(levelMode = mode) } else _paywall.value = Feature.LEVELS_PLANNED_VS_LOGGED
         }
     }
 

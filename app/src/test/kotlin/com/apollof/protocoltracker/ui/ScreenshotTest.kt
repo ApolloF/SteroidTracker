@@ -23,7 +23,7 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -634,7 +634,7 @@ class ScreenshotTest {
 
         click(hasText("Levels") and hasClickAction()); waitFor("Testosterone"); shot("levels")
         click(hasText("Testosterone") and clickLabel("Open details"))
-        waitFor("Plan only")
+        waitFor("Doses shown")
         shot("level-detail")
         compose.onNodeWithContentDescription("Back").performClick(); waitFor("Testosterone")
 
