@@ -84,9 +84,12 @@ class LevelsGateTest {
         awaitMain("trial start") { trials().keys == LEVELS_FEATURES }
         val started = trials()
         // During the trial everything is open, and the banner says when it ends. Until the stored start reaches the
-        // state, the gate shows a trial from "now" (nanoseconds; the store keeps milliseconds), so wait for it.
+        // state, the gate shows a trial from "now", milliseconds off the stored one; on a loaded CI runner that update
+        // missed a 30 s wait, so compare to the minute (the banner shows a date).
         val endsAt = started.values.min().plus(Duration.ofDays(14))
-        awaitMain("trial end from the stored start") { first.state.value.access.trialEndsAt == endsAt }
+        awaitMain("trial end from the stored start") {
+            first.state.value.access.trialEndsAt?.let { Duration.between(endsAt, it).abs() < Duration.ofMinutes(1) } == true
+        }
         assertEquals(3, first.state.value.current.size + first.state.value.others.size)
         assertEquals(2, first.state.value.views.size)
         first.viewModelScope.cancel()

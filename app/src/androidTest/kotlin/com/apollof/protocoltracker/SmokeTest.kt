@@ -16,6 +16,9 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.espresso.Espresso
+import androidx.test.espresso.action.ViewActions
+import androidx.test.espresso.matcher.RootMatchers.isDialog
+import androidx.test.espresso.matcher.ViewMatchers.isRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.GrantPermissionRule
@@ -95,6 +98,15 @@ class SmokeTest {
         compose.waitForIdle()
     }
 
+    /**
+     * Closes the open sheet. A sheet is its own dialog window, and its text shows before that window takes focus;
+     * a plain back press in between went to the activity and closed the app. Espresso waits for the dialog's focus.
+     */
+    private fun closeSheet() {
+        Espresso.onView(isRoot()).inRoot(isDialog()).perform(ViewActions.pressBack())
+        compose.waitForIdle()
+    }
+
     private fun openLogMenu() {
         val log = hasClickAction() and hasAnyDescendant(hasText("Log"))
         waitFor(log, unmerged = true)
@@ -107,7 +119,7 @@ class SmokeTest {
         openLogMenu()
         compose.onNode(hasText(row) and hasClickAction()).click()
         waitForText(shows)
-        back()
+        closeSheet()
     }
 
     @Test
@@ -126,7 +138,7 @@ class SmokeTest {
         // A planned dose's sheet.
         compose.onAllNodes(hasText(doseName, substring = true) and clickLabel("Log with details"))[0].click()
         waitForText("Plan:")
-        back()
+        closeSheet()
 
         tab("Plan")
         waitForText("per week")
