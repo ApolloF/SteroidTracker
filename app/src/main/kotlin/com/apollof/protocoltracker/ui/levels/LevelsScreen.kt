@@ -79,6 +79,7 @@ import com.apollof.protocoltracker.ui.components.ColorDot
 import com.apollof.protocoltracker.ui.components.EmptyState
 import com.apollof.protocoltracker.ui.components.Formats
 import com.apollof.protocoltracker.ui.components.LedgerCard
+import com.apollof.protocoltracker.ui.components.MenuChoice
 import com.apollof.protocoltracker.ui.components.FitRow
 import com.apollof.protocoltracker.ui.components.QuickChip
 import com.apollof.protocoltracker.ui.components.RowDivider
@@ -167,9 +168,9 @@ fun LevelsScreen(onOpenSettings: () -> Unit, onOpenGroup: (String) -> Unit, onOp
             }
             item(key = "controls") {
                 Column(Modifier.padding(horizontal = Spacing.screen, vertical = Spacing.md), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                    // The overview stays on Logged + plan; the mode row lives on the detail screen.
-                    Segmented(LevelRange.entries, state.window.range, { it.label }) { vm.setRange(it); cursor = null }
+                    Segmented(LevelRange.entries, state.window.range, { it.label }, narrowTitle = "Range") { vm.setRange(it); cursor = null }
                     RangeLimitNote(state.access.maxDays)
+                    ModeRow(state.window.mode, vm::setMode)
                 }
             }
             state.views.forEach { view ->
@@ -224,6 +225,11 @@ private fun modeLabel(mode: LevelMode) = when (mode) {
     LevelMode.RECORDED -> "Logged"
     LevelMode.PLANNED -> "Plan only"
 }
+
+/** What the charts draw, as one line that opens a menu. One setting for the whole tab: overview and details follow it. */
+@Composable
+private fun ModeRow(mode: LevelMode, onMode: (LevelMode) -> Unit) =
+    MenuChoice("Doses shown", listOf(LevelMode.COMBINED, LevelMode.RECORDED, LevelMode.PLANNED), mode, ::modeLabel, onSelect = onMode)
 
 /** Compounds in use with their current estimate; tapping one scrolls to its chart, or one at a time ([shown] set) shows it. */
 @Composable
@@ -333,10 +339,10 @@ fun LevelDetailScreen(group: String, onBack: () -> Unit) {
             if (state.access.locked) item(key = "locked") { LockedLevels { vm.showPaywall(Feature.LEVELS_RANGE) } }
             if (!state.access.locked) item(key = "controls") {
                 Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                    Segmented(LevelRange.entries, state.window.range, { it.label }) { vm.setRange(it); cursor = null }
+                    Segmented(LevelRange.entries, state.window.range, { it.label }, narrowTitle = "Range") { vm.setRange(it); cursor = null }
                     RangeLimitNote(state.access.maxDays)
                     // Without the modes, Logged and Plan only open the paywall (the view model decides).
-                    Segmented(listOf(LevelMode.COMBINED, LevelMode.RECORDED, LevelMode.PLANNED), state.window.mode, ::modeLabel) { vm.setMode(it) }
+                    ModeRow(state.window.mode, vm::setMode)
                 }
             }
             if (!state.loading && view == null) item(key = "empty") {
