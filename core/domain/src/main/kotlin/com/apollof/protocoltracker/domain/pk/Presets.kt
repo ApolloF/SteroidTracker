@@ -25,7 +25,7 @@ object CompoundColors {
  */
 object Presets {
     /** Bump when preset data changes; seeding then refreshes presets the user has not edited. */
-    const val VERSION = "presets-2026-10c"
+    const val VERSION = "presets-2026-10d"
 
     private const val SHEET = "PK sheet"
 
@@ -183,7 +183,7 @@ object Presets {
         compound("cabergoline", "Caber", "cabergoline", "Cabergoline", SUP, PO, 3,
             sp(S.CABERGOLINE, LevelUnit.PG_ML), "$SHEET: PMID 12844325", SupportKind.PROLACTIN, perTablet = 0.5),
         compound("telmisartan", "", "telmisartan", "Telmisartan", SUP, PO, 5,
-            sp(S.TELMISARTAN, LevelUnit.NG_ML), "$SHEET: PMID 17009837; PMID 11185629", SupportKind.CARDIO, perTablet = 40.0),
+            sp(S.TELMISARTAN, LevelUnit.NG_ML), "$SHEET: PMID 17009837 (40 mg arm); PMID 11185629", SupportKind.CARDIO, perTablet = 40.0),
         compound("nebivolol", "", "nebivolol", "Nebivolol", SUP, PO, 1,
             sp(S.NEBIVOLOL, LevelUnit.NG_ML), "$SHEET: PMID 24845234; PMC4576779", SupportKind.CARDIO, perTablet = 5.0),
         compound("tadalafil", "Cialis", "tadalafil", "Tadalafil", SUP, PO, 2,

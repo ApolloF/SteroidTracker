@@ -6,10 +6,12 @@ import com.apollof.protocoltracker.domain.model.Rise
 import kotlin.math.abs
 
 /**
- * Moves stored kinetics off the presets before the PK sheet (presets-2026-09b and -10a, which differ only in F).
- * Log snapshots and edited presets keep a copy of the kinetics; a copy that still equals the preset's old kinetics was
- * never changed by the user, so it is replaced by the preset's current kinetics. Anything else is the user's own and
- * stays. F is ignored in the comparison: 10a only corrected F.
+ * Moves stored kinetics off older presets: those before the PK sheet (presets-2026-09b and -10a, which differ only in
+ * F) and the presets whose peak changed in presets-2026-10d (shipped in -10c): six Basic esters (exposure anchoring:
+ * Test PP, Iso, Dec, Tren E, Parabolan, Masteron E) and telmisartan (40 mg arm). Log snapshots and edited presets
+ * keep a copy of the kinetics; a copy that still equals the preset's old kinetics was never changed by the user, so it
+ * is replaced by the preset's current kinetics. Anything else is the user's own and stays. F is ignored in the
+ * comparison: 10a only corrected F.
  */
 object PresetMigration {
     /** Preset id (without "preset:") → kinetics as shipped in presets-2026-10a: half-life h, Tmax h, peak, F, unit. */
@@ -72,16 +74,27 @@ object PresetMigration {
         "pt-141" to PkParams(2.7, 1.0, 4160.0, 1.0, LevelUnit.NG_ML),
     )
 
+    /** Preset id → kinetics as shipped in presets-2026-10c, for the presets whose peak changed in -10d. */
+    private val shipped10c: Map<String, PkParams> = mapOf(
+        "test-pp" to PkParams(60.0, 22.5, 8.4525, 0.69, LevelUnit.NG_DL, Rise.FIRST_ORDER),
+        "test-iso" to PkParams(74.4, 27.9, 5.5125, 0.75, LevelUnit.NG_DL, Rise.FIRST_ORDER),
+        "test-dec" to PkParams(134.39999999999998, 50.4, 7.9625, 0.65, LevelUnit.NG_DL, Rise.FIRST_ORDER),
+        "tren-enan" to PkParams(264.0, 99.0, 8.6975, 0.71, LevelUnit.NG_DL, Rise.FIRST_ORDER),
+        "tren-hex" to PkParams(192.0, 72.0, 8.085, 0.66, LevelUnit.NG_DL, Rise.FIRST_ORDER),
+        "mast-enan" to PkParams(108.0, 40.5, 8.9425, 0.73, LevelUnit.NG_DL, Rise.FIRST_ORDER),
+        "telmisartan" to PkParams(23.2999999992, 1.69999999992, 770.0625, 0.43, LevelUnit.NG_ML),
+    )
+
     /** The current preset kinetics when [pk] is still the legacy value of preset [compoundId]; otherwise [pk]. */
     fun upgrade(compoundId: String, pk: PkParams?): PkParams? {
         if (pk == null) return null
-        val old = legacy[compoundId.removePrefix("preset:")] ?: return pk
-        if (!sameKinetics(pk, old)) return pk
-        return Presets.byId(compoundId)?.pk ?: pk
+        val id = compoundId.removePrefix("preset:")
+        val isOld = listOfNotNull(legacy[id], shipped10c[id]).any { sameKinetics(pk, it) }
+        return if (isOld) Presets.byId(compoundId)?.pk ?: pk else pk
     }
 
     private fun sameKinetics(a: PkParams, b: PkParams): Boolean =
-        a.rise == Rise.LINEAR && b.rise == Rise.LINEAR && a.levelUnit == b.levelUnit &&
+        a.rise == b.rise && a.levelUnit == b.levelUnit &&
             close(a.halfLifeH, b.halfLifeH) && close(a.tmaxH, b.tmaxH) &&
             (a.peakPerUnit == null) == (b.peakPerUnit == null) &&
             (a.peakPerUnit == null || close(a.peakPerUnit, b.peakPerUnit!!))
