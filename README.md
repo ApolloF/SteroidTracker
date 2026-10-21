@@ -34,7 +34,7 @@ Requires JDK 21 and the Android SDK (`ANDROID_HOME`).
 ```
 ./gradlew :core:domain:test testDebugUnitTest assembleDebug
 ```
-The APK is written to `app/build/outputs/apk/debug/`. See [AGENTS.md](AGENTS.md) for layout and conventions.
+The APK is written to `app/build/outputs/apk/debug/`.
 
 Release builds are signed in CI when a `v*` tag is pushed and the `PT_KEYSTORE_BASE64`, `PT_KEYSTORE_PASSWORD`, `PT_KEY_ALIAS` and `PT_KEY_PASSWORD` secrets are set. Set `versionName` in `app/build.gradle.kts` to the tag without the `v` first; CI refuses to publish when they differ. A tag with a suffix (e.g. `v0.5.1-beta.1`) is published as a pre-release. Locally, put the same keys in an untracked `keystore.properties`.
 
