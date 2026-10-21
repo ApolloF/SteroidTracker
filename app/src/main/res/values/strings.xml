@@ -3,6 +3,14 @@
     <string name="app_name">SteroidTracker</string>
     <string name="widget_label">Today</string>
     <string name="widget_description">Today\'s doses with one-tap check</string>
+    <!-- Widget picker preview: sample doses. -->
+    <string name="widget_preview_count">1 of 3</string>
+    <string name="widget_preview_name_1">Vitamin D3</string>
+    <string name="widget_preview_detail_1">Taken · Morning · 2000 IU</string>
+    <string name="widget_preview_name_2">Omega-3</string>
+    <string name="widget_preview_detail_2">Morning · 1 g</string>
+    <string name="widget_preview_name_3">Magnesium</string>
+    <string name="widget_preview_detail_3">Evening · 400 mg</string>
     <string name="channel_doses">Doses</string>
     <string name="channel_doses_description">Reminder at each scheduled dose time</string>
     <string name="channel_summary">Daily summary</string>
