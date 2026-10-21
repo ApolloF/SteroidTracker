@@ -72,7 +72,7 @@ Never use in listing text, screenshots or release notes: cycle, blast, cruise, P
 ## 5. Each release
 
 1. Bump `versionCode` (Play rejects a code it has seen) and `versionName`, add `docs/releases/v<version>.md`.
-2. Before the tag (AGENTS.md): `connectedFossDebugAndroidTest connectedPlayDebugAndroidTest` on an emulator, the release build on a device, `adb logcat -b crash` empty.
+2. Before the tag: `connectedFossDebugAndroidTest connectedPlayDebugAndroidTest` on an emulator, the release build on a device, `adb logcat -b crash` empty.
 3. Push the `v*` tag. The `release` job publishes the foss APK on GitHub and uploads the signed Play bundle as the `steroidtracker-play-bundle` workflow artifact.
 4. Upload that `.aab` in Play Console to the testing track, with release notes in the Play wording (the GitHub notes may name foss-only presets; rewrite them).
 5. Licence-tester checks on a real device: buy, pending purchase (slow test card), refund (Pro goes away on the next start), Restore purchase.

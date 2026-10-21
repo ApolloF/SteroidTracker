@@ -35,7 +35,7 @@ class OldBackupImportTest {
 
         val restored = repo.exportBackup()
         assertEquals(backup.items, restored.items)
-        // PresetMigration may move snapshot kinetics that still equal an older preset to the current one (AGENTS.md).
+        // PresetMigration may move snapshot kinetics that still equal an older preset to the current one.
         fun withoutPk(logs: List<DoseLog>) = logs.map { it.copy(snapshot = it.snapshot.copy(pk = null)) }
         assertEquals(withoutPk(backup.logs), withoutPk(restored.logs))
         assertEquals(backup.journal, restored.journal)
