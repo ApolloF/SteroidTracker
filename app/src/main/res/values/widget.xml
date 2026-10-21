@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget picker preview and loading colours. Before Android 12 the app's Sage scheme; values-v31 follows the wallpaper like GlanceTheme. -->
+<resources>
+    <color name="widget_background">#FFE8ECE9</color>
+    <color name="widget_primary">#FF1E6B5C</color>
+    <color name="widget_on_primary">#FFFFFFFF</color>
+    <color name="widget_on_surface">#FF151917</color>
+    <color name="widget_on_surface_variant">#FF56605B</color>
+    <color name="widget_error">#FFB3261E</color>
+    <dimen name="widget_radius">20dp</dimen>
+</resources>
