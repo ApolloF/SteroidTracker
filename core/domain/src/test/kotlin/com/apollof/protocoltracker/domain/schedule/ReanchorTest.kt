@@ -37,6 +37,10 @@ class ReanchorTest {
         key, itemId, "c", key, null, takenAt, Amount(500.0, DoseUnit.IU), null, status,
         snapshot = DoseSnapshot("hCG", "hCG", CompoundCategory.SUPPORT, BaseUnit.IU, null), createdAt = takenAt,
     )
+    private fun extra(takenAt: Instant, compoundId: String = "c") = DoseLog(
+        "extra-$takenAt", null, compoundId, null, null, takenAt, Amount(500.0, DoseUnit.IU), null, LogStatus.TAKEN,
+        snapshot = DoseSnapshot("hCG", "hCG", CompoundCategory.SUPPORT, BaseUnit.IU, null), createdAt = takenAt,
+    )
     private fun dates(item: PlanItem, logs: List<DoseLog>, from: String = "2026-09-01", to: String = "2026-09-20") =
         occurrences(emptyList(), listOf(item), at(from), at(to), zone, IntervalAnchors.from(logs)).map { it.localDate.toString() }
 
@@ -64,12 +68,58 @@ class ReanchorTest {
     }
 
     @Test
-    fun skippedAndUnscheduledDosesDoNotMoveThePlan() {
+    fun skippedDosesAndLogsOfOtherItemsDoNotMoveThePlan() {
         val logs = listOf(
             log(slotKey("2026-09-04"), at("2026-09-05", "10:00"), LogStatus.SKIPPED),
             log(slotKey("2026-09-07"), at("2026-09-08", "10:00"), itemId = null),
         )
         assertEquals(dates(every3(false), emptyList()), dates(every3(), logs))
+    }
+
+    @Test
+    fun anUnscheduledDoseOnAnOffDayRestartsTheGrid() {
+        val logs = listOf(extra(at("2026-09-02", "21:00")))
+        assertEquals(listOf("2026-09-01", "2026-09-05", "2026-09-08", "2026-09-11", "2026-09-14", "2026-09-17"), dates(every3(), logs))
+    }
+
+    @Test
+    fun anUnscheduledDoseOnADoseDayReplacesThatDose() {
+        val logs = listOf(extra(at("2026-09-04", "08:00")))
+        assertEquals(listOf("2026-09-01", "2026-09-07", "2026-09-10"), dates(every3(), logs, to = "2026-09-11"))
+    }
+
+    @Test
+    fun unscheduledDosesOfOtherCompoundsBeforeTheAnchorOrWithTheSwitchOffDoNotMoveThePlan() {
+        val plain = dates(every3(false), emptyList())
+        assertEquals(plain, dates(every3(), listOf(extra(at("2026-09-02", "21:00"), compoundId = "other"))))
+        assertEquals(plain, dates(every3(false), listOf(extra(at("2026-09-02", "21:00")))))
+        val moved = item(Schedule.EveryNDays(3, day("2026-09-10"), any))
+        assertEquals(listOf("2026-09-10", "2026-09-13", "2026-09-16", "2026-09-19"), dates(moved, listOf(extra(at("2026-09-05", "10:00")))))
+    }
+
+    @Test
+    fun anUnscheduledDoseTheEveningBeforeMovesTodaysDoseAndItsReminder() {
+        // hCG every other day and a weekly peptide, both due Sunday at noon; both taken as extras on Saturday night.
+        val noon = listOf(Timing.At(LocalTime.NOON))
+        val eod = item(Schedule.EveryNDays(2, day("2026-10-23"), noon), id = "hcg")
+        val weekly = PlanItem("reta", null, "r", Amount(2.0, DoseUnit.MG), schedule = Schedule.EveryNDays(7, day("2026-10-18"), noon))
+        val logs = listOf(extra(at("2026-10-24", "21:26")), extra(at("2026-10-24", "21:26"), compoundId = "r"))
+        val anchors = IntervalAnchors.from(logs)
+        val night = SlotTimes(dayStart = LocalTime.of(4, 0))
+        val agenda = buildAgenda(emptyList(), listOf(eod, weekly), logs, at("2026-10-25", "09:00"), zone, anchors, night)
+        assertTrue(agenda.groups.isEmpty())
+        val next = occurrences(emptyList(), listOf(eod, weekly), at("2026-10-25"), at("2026-11-02"), zone, anchors, night)
+        assertEquals(listOf("hcg@2026-10-26", "hcg@2026-10-28", "hcg@2026-10-30", "reta@2026-10-31", "hcg@2026-11-01"), next.map { "${it.item.id}@${it.localDate}" })
+    }
+
+    @Test
+    fun everyHoursRestartsFromAnUnscheduledDose() {
+        val anchor = at("2026-09-01", "10:00")
+        val s = item(Schedule.EveryHours(84.0, anchor))
+        val takenAt = anchor.plus(Duration.ofHours(30)).plusSeconds(42)
+        val occ = occurrences(emptyList(), listOf(s), at("2026-09-01"), at("2026-09-10"), zone, IntervalAnchors.from(listOf(extra(takenAt)))).map { it.at }
+        val restart = takenAt.truncatedTo(java.time.temporal.ChronoUnit.MINUTES)
+        assertEquals(listOf(anchor, restart.plus(Duration.ofHours(84)), restart.plus(Duration.ofHours(168))), occ)
     }
 
     @Test

@@ -74,7 +74,7 @@ interface PlanItemDao {
     suspend fun clear()
 }
 
-data class TakenDoseRow(val planItemId: String, val occurrenceKey: String, val takenAtMs: Long)
+data class TakenDoseRow(val planItemId: String?, val compoundId: String, val occurrenceKey: String?, val takenAtMs: Long)
 
 @Dao
 interface DoseLogDao {
@@ -97,11 +97,11 @@ interface DoseLogDao {
     @Query("SELECT * FROM dose_logs WHERE id = :id")
     suspend fun get(id: String): DoseLogEntity?
 
-    /** Taken scheduled doses; they re-anchor interval schedules. */
-    @Query("SELECT planItemId, occurrenceKey, takenAtMs FROM dose_logs WHERE status = 'TAKEN' AND planItemId IS NOT NULL AND occurrenceKey IS NOT NULL")
+    /** Taken doses, scheduled and unscheduled; they re-anchor interval schedules. */
+    @Query("SELECT planItemId, compoundId, occurrenceKey, takenAtMs FROM dose_logs WHERE status = 'TAKEN'")
     fun observeTaken(): Flow<List<TakenDoseRow>>
 
-    @Query("SELECT planItemId, occurrenceKey, takenAtMs FROM dose_logs WHERE status = 'TAKEN' AND planItemId IS NOT NULL AND occurrenceKey IS NOT NULL")
+    @Query("SELECT planItemId, compoundId, occurrenceKey, takenAtMs FROM dose_logs WHERE status = 'TAKEN'")
     suspend fun getTaken(): List<TakenDoseRow>
 
     @Query("SELECT * FROM dose_logs WHERE planItemId = :planItemId")

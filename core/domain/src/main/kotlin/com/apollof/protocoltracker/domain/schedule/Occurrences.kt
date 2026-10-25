@@ -142,7 +142,8 @@ class OccurrenceLimitException : IllegalStateException("Too many scheduled doses
  *
  * Interval schedules with `fromLastDose` restart from each taken dose in [anchors]: the grid runs from the plan's
  * anchor until the first taken dose, then from each taken dose's date (every N days) or time (every X hours)
- * until the next one. The occurrence each taken dose confirmed is always kept, so its log still matches.
+ * until the next one. The occurrence each taken dose confirmed is always kept, so its log still matches. A taken
+ * unscheduled dose of the item's compound restarts the grid the same way but confirms no occurrence.
  */
 fun occurrences(
     phases: List<Phase>,
@@ -223,7 +224,7 @@ fun occurrences(
                     val end = if (endExclusive == null) lastDate else minOf(lastDate, endExclusive.minusDays(1))
                     forEachDate(start, end, n) { emitDay(item, it, s.timings) }
                 }
-                val restarts = if (s.followsLastDose) dayRestarts(anchors.forItem(item.id), item.id, s.anchor, zone, slotTimes) else null
+                val restarts = if (s.followsLastDose) dayRestarts(anchors.forItem(item.id), anchors.extrasFor(item.compoundId), item.id, s.anchor, zone, slotTimes) else null
                 if (restarts == null || restarts.breaks.isEmpty()) {
                     grid(s.anchor, null)
                 } else {
@@ -246,7 +247,7 @@ fun occurrences(
                         k++
                     }
                 }
-                val restarts = if (s.followsLastDose) intervalRestarts(anchors.forItem(item.id), item.id, s.anchor) else null
+                val restarts = if (s.followsLastDose) intervalRestarts(anchors.forItem(item.id), anchors.extrasFor(item.compoundId), item.id, s.anchor) else null
                 if (restarts == null || restarts.breaks.isEmpty()) {
                     grid(s.anchor, null)
                 } else {
@@ -268,9 +269,9 @@ private class Restarts<T>(val breaks: List<T>, val pinned: Collection<T>)
 /**
  * Every-N-days restarts: each scheduled day with a taken dose restarts the grid on the day its first dose was
  * taken (its logical day, so a dose taken at 01:00 before the day start counts for the day before). Doses keyed before
- * the plan's anchor are ignored, so moving the anchor later starts afresh.
+ * the plan's anchor are ignored, so moving the anchor later starts afresh. Unscheduled doses restart it on their logical day.
  */
-private fun dayRestarts(doses: List<TakenDose>, itemId: String, anchor: LocalDate, zone: ZoneId, slotTimes: SlotTimes): Restarts<LocalDate> {
+private fun dayRestarts(doses: List<TakenDose>, extras: List<Instant>, itemId: String, anchor: LocalDate, zone: ZoneId, slotTimes: SlotTimes): Restarts<LocalDate> {
     val firstTakenByDay = HashMap<LocalDate, Instant>()
     for (dose in doses) {
         val day = when (val ref = parseOccurrenceKey(dose.occurrenceKey)?.takeIf { it.itemId == itemId }) {
@@ -282,12 +283,13 @@ private fun dayRestarts(doses: List<TakenDose>, itemId: String, anchor: LocalDat
         if (day < anchor) continue
         firstTakenByDay.merge(day, dose.takenAt) { a, b -> minOf(a, b) }
     }
-    val breaks = firstTakenByDay.values.map { slotTimes.dateOf(it, zone) }.distinct().sorted()
+    val extraDays = extras.map { slotTimes.dateOf(it, zone) }.filter { it >= anchor }
+    val breaks = (firstTakenByDay.values.map { slotTimes.dateOf(it, zone) } + extraDays).distinct().sorted()
     return Restarts(breaks, firstTakenByDay.keys)
 }
 
-/** Every-X-hours restarts: each taken dose restarts the grid at the minute it was taken. */
-private fun intervalRestarts(doses: List<TakenDose>, itemId: String, anchor: Instant): Restarts<Instant> {
+/** Every-X-hours restarts: each taken dose, scheduled or not, restarts the grid at the minute it was taken. */
+private fun intervalRestarts(doses: List<TakenDose>, extras: List<Instant>, itemId: String, anchor: Instant): Restarts<Instant> {
     val pinned = HashSet<Instant>()
     val breaks = HashSet<Instant>()
     for (dose in doses) {
@@ -296,6 +298,7 @@ private fun intervalRestarts(doses: List<TakenDose>, itemId: String, anchor: Ins
         pinned += ref.at
         breaks += dose.takenAt.truncatedTo(ChronoUnit.MINUTES)
     }
+    for (at in extras) if (at >= anchor) breaks += at.truncatedTo(ChronoUnit.MINUTES)
     return Restarts(breaks.sorted(), pinned)
 }
 
