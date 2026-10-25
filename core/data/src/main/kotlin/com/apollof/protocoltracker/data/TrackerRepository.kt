@@ -24,6 +24,7 @@ import com.apollof.protocoltracker.domain.pk.PresetMigration
 import com.apollof.protocoltracker.domain.pk.allows
 import com.apollof.protocoltracker.domain.pk.present
 import com.apollof.protocoltracker.domain.pk.Presets
+import com.apollof.protocoltracker.domain.schedule.ExtraDose
 import com.apollof.protocoltracker.domain.schedule.IntervalAnchors
 import com.apollof.protocoltracker.domain.schedule.Occurrence
 import com.apollof.protocoltracker.domain.schedule.TakenDose
@@ -57,13 +58,15 @@ class TrackerRepository(
 
     val protocol: Flow<Protocol> = combine(phases, items, compounds) { p, i, c -> Protocol(p, i, c.associateBy { it.id }) }
 
-    /** Every taken scheduled dose, for re-anchoring interval schedules. */
+    /** Every taken dose, for re-anchoring interval schedules. */
     val anchors: Flow<IntervalAnchors> = db.logs().observeTaken().map(::toAnchors)
 
     suspend fun anchorsNow(): IntervalAnchors = toAnchors(db.logs().getTaken())
 
-    private fun toAnchors(rows: List<TakenDoseRow>) =
-        IntervalAnchors(rows.map { TakenDose(it.planItemId, it.occurrenceKey, Instant.ofEpochMilli(it.takenAtMs)) })
+    private fun toAnchors(rows: List<TakenDoseRow>) = IntervalAnchors(
+        rows.mapNotNull { TakenDose(it.planItemId ?: return@mapNotNull null, it.occurrenceKey ?: return@mapNotNull null, Instant.ofEpochMilli(it.takenAtMs)) },
+        rows.filter { it.occurrenceKey == null }.map { ExtraDose(it.compoundId, Instant.ofEpochMilli(it.takenAtMs)) },
+    )
 
     fun logsSince(from: Instant): Flow<List<DoseLog>> =
         db.logs().observeSince(from.toEpochMilli()).map { list -> list.map { it.toDomain() } }

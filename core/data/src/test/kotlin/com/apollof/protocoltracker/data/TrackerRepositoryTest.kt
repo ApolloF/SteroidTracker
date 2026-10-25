@@ -1,5 +1,6 @@
 package com.apollof.protocoltracker.data
 
+import com.apollof.protocoltracker.domain.schedule.ExtraDose
 import com.apollof.protocoltracker.domain.schedule.IntervalAnchors
 import com.apollof.protocoltracker.domain.schedule.TakenDose
 import androidx.test.core.app.ApplicationProvider
@@ -231,7 +232,7 @@ class TrackerRepositoryTest {
     }
 
     @Test
-    fun anchorsHoldOnlyTakenScheduledDoses() = runTest {
+    fun anchorsHoldTakenScheduledAndUnscheduledDoses() = runTest {
         repo.seedPresets(); repo.savePhase(phase); repo.saveItem(item)
         val occs = occurrences(listOf(phase), listOf(item), Instant.parse("2026-09-21T00:00:00Z"), Instant.parse("2026-09-25T00:00:00Z"), ZoneOffset.UTC, IntervalAnchors.NONE)
         repo.logOccurrence(occs[0], LogStatus.TAKEN, takenAt = now)
@@ -239,7 +240,8 @@ class TrackerRepositoryTest {
         repo.logUnscheduled(repo.compounds.first().first { it.id == item.compoundId }, Amount(10.0, DoseUnit.MG), Formulation(), now)
         val expected = listOf(TakenDose(item.id, occs[0].key, now))
         assertEquals(expected, repo.anchorsNow().forItem(item.id))
-        assertEquals(IntervalAnchors(expected), repo.anchors.first())
+        assertEquals(listOf(now), repo.anchorsNow().extrasFor(item.compoundId))
+        assertEquals(IntervalAnchors(expected, listOf(ExtraDose(item.compoundId, now))), repo.anchors.first())
     }
 
     @Test
