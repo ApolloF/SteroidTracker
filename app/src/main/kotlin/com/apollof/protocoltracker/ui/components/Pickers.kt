@@ -21,7 +21,7 @@ import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.Layout
@@ -76,7 +76,7 @@ fun DatePickDialog(initial: LocalDate, onDismiss: () -> Unit, onConfirm: (LocalD
 /** Read-only field that opens a date picker; optional dates can be cleared. */
 @Composable
 fun DateField(label: String, value: LocalDate?, onChange: (LocalDate?) -> Unit, modifier: Modifier = Modifier, optional: Boolean = false) {
-    var open by remember { mutableStateOf(false) }
+    var open by rememberSaveable { mutableStateOf(false) }
     OutlinedTextField(
         value = value?.format(Formats.date) ?: "",
         onValueChange = {},
@@ -96,7 +96,7 @@ fun DateField(label: String, value: LocalDate?, onChange: (LocalDate?) -> Unit, 
 
 @Composable
 fun TimeField(label: String, value: LocalTime, onChange: (LocalTime) -> Unit, modifier: Modifier = Modifier) {
-    var open by remember { mutableStateOf(false) }
+    var open by rememberSaveable { mutableStateOf(false) }
     OutlinedTextField(
         value = value.format(Formats.time), onValueChange = {}, readOnly = true, label = { Text(label) },
         trailingIcon = { IconButton(onClick = { open = true }) { Icon(Icons.Outlined.Schedule, "Choose $label") } },

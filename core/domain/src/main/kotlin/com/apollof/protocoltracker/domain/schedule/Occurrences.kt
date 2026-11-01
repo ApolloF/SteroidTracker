@@ -2,6 +2,8 @@ package com.apollof.protocoltracker.domain.schedule
 
 import com.apollof.protocoltracker.domain.model.Amount
 import com.apollof.protocoltracker.domain.model.DaySlot
+import com.apollof.protocoltracker.domain.model.InstantS
+import com.apollof.protocoltracker.domain.model.LocalDateS
 import com.apollof.protocoltracker.domain.model.Phase
 import com.apollof.protocoltracker.domain.model.PlanItem
 import com.apollof.protocoltracker.domain.model.Schedule
@@ -18,6 +20,7 @@ import java.time.ZonedDateTime
 import java.time.temporal.ChronoUnit
 import kotlin.math.ceil
 import kotlin.math.roundToLong
+import kotlinx.serialization.Serializable
 
 /** Clock times for the parts of the day, from settings. */
 data class SlotTimes(
@@ -34,16 +37,17 @@ data class SlotTimes(
     }
 }
 
+@Serializable
 data class Occurrence(
     val key: String,
     val item: PlanItem,
     /** Nominal time: the exact time, or the slot's clock time. Used for curves, sorting and "scheduled" logging. */
-    val at: Instant,
-    val localDate: LocalDate,
+    val at: InstantS,
+    val localDate: LocalDateS,
     /** Null for interval schedules (every X hours). */
     val timing: Timing?,
     /** When to remind; null when the item has reminders off. */
-    val remindAt: Instant?,
+    val remindAt: InstantS?,
     /** Wall-clock time fell into a DST gap and was moved forward. */
     val shifted: Boolean,
 ) {

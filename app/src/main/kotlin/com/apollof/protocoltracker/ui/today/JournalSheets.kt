@@ -22,7 +22,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
@@ -32,6 +32,8 @@ import com.apollof.protocoltracker.domain.model.bloodPressureProblems
 import com.apollof.protocoltracker.domain.schedule.SlotTimes
 import com.apollof.protocoltracker.domain.schedule.dateOf
 import com.apollof.protocoltracker.domain.timeline.atOrBefore
+import com.apollof.protocoltracker.ui.components.rememberSaveableSheetContent
+import com.apollof.protocoltracker.ui.components.nullableSaver
 import com.apollof.protocoltracker.ui.components.QuickChip
 import com.apollof.protocoltracker.ui.components.DeleteEntryButton
 import com.apollof.protocoltracker.ui.components.Formats
@@ -47,7 +49,7 @@ import java.time.ZoneId
 /** Time row shared by the journal sheets: now, or a picked time on the same day. */
 @Composable
 internal fun TimeChoice(now: Instant, zone: ZoneId, time: Instant?, onTime: (Instant?) -> Unit) {
-    var picking by remember { mutableStateOf(false) }
+    var picking by rememberSaveable { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SectionLabel("Time")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -81,16 +83,16 @@ fun BloodPressureSheet(
     existing: JournalEntry.BloodPressure? = null,
     onDelete: (() -> Unit)? = null,
 ) {
-    var systolic by remember { mutableStateOf(existing?.systolic?.toString() ?: "") }
-    var diastolic by remember { mutableStateOf(existing?.diastolic?.toString() ?: "") }
-    var pulse by remember { mutableStateOf(existing?.pulse?.toString() ?: "") }
-    var note by remember { mutableStateOf(existing?.note ?: "") }
-    var time by remember { mutableStateOf(existing?.at) }
-    var tried by remember { mutableStateOf(false) }
+    var systolic by rememberSaveable { mutableStateOf(existing?.systolic?.toString() ?: "") }
+    var diastolic by rememberSaveable { mutableStateOf(existing?.diastolic?.toString() ?: "") }
+    var pulse by rememberSaveable { mutableStateOf(existing?.pulse?.toString() ?: "") }
+    var note by rememberSaveable { mutableStateOf(existing?.note ?: "") }
+    var time by rememberSaveable(stateSaver = nullableSaver<Instant>()) { mutableStateOf(existing?.at) }
+    var tried by rememberSaveable { mutableStateOf(false) }
     val problems = bloodPressureProblems(systolic.toIntOrNull(), diastolic.toIntOrNull(), pulse.takeIf { it.isNotBlank() }?.toIntOrNull())
     val c = Tracker.colors
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = c.surface) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = c.surface, content = rememberSaveableSheetContent {
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 16.dp).imePadding().navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -113,7 +115,7 @@ fun BloodPressureSheet(
             }
             if (existing != null && onDelete != null) DeleteEntryButton(onDelete)
         }
-    }
+    })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -126,10 +128,10 @@ fun NoteSheet(
     existing: JournalEntry.Note? = null,
     onDelete: (() -> Unit)? = null,
 ) {
-    var text by remember { mutableStateOf(existing?.text ?: "") }
-    var time by remember { mutableStateOf(existing?.at) }
+    var text by rememberSaveable { mutableStateOf(existing?.text ?: "") }
+    var time by rememberSaveable(stateSaver = nullableSaver<Instant>()) { mutableStateOf(existing?.at) }
     val c = Tracker.colors
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = c.surface) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = c.surface, content = rememberSaveableSheetContent {
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 16.dp).imePadding().navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -148,7 +150,7 @@ fun NoteSheet(
             }
             if (existing != null && onDelete != null) DeleteEntryButton(onDelete)
         }
-    }
+    })
 }
 
 @Composable

@@ -83,6 +83,7 @@ import com.apollof.protocoltracker.ui.theme.NumericStyle
 import com.apollof.protocoltracker.ui.theme.Spacing
 import com.apollof.protocoltracker.ui.theme.Tracker
 import com.apollof.protocoltracker.ui.theme.TrackerType
+import com.apollof.protocoltracker.ui.components.jsonSaver
 import com.apollof.protocoltracker.ui.today.LogMenuSheet
 import com.apollof.protocoltracker.ui.today.LogTarget
 import com.apollof.protocoltracker.ui.today.LogDoseSheet
@@ -91,14 +92,22 @@ import com.apollof.protocoltracker.ui.today.JournalLine
 import com.apollof.protocoltracker.ui.today.NoteSheet
 import java.time.ZoneId
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 
+@Serializable
 private sealed interface Editing {
+    @Serializable
     data class Dose(val log: DoseLog) : Editing
+    @Serializable
     data class Bp(val entry: JournalEntry.BloodPressure?) : Editing
+    @Serializable
     data class Note(val entry: JournalEntry.Note?) : Editing
+    @Serializable
     data class Symptoms(val entry: JournalEntry.Symptoms?) : Editing
+    @Serializable
     data class Bloodwork(val entry: JournalEntry.Bloodwork?) : Editing
     /** A new extra dose from the Log menu. */
+    @Serializable
     data object Extra : Editing
 }
 
@@ -113,9 +122,9 @@ fun JournalScreen(onOpenSettings: () -> Unit, onImportBloodwork: (() -> Unit)? =
     val doseEditor by vm.doseEditor.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    var editing by remember { mutableStateOf<Editing?>(null) }
+    var editing by rememberSaveable(stateSaver = jsonSaver<Editing?>()) { mutableStateOf<Editing?>(null) }
     var adherenceOpen by rememberSaveable { mutableStateOf(false) }
-    var logMenu by remember { mutableStateOf(false) }
+    var logMenu by rememberSaveable { mutableStateOf(false) }
     val c = Tracker.colors
     val motion = Motions.current
 

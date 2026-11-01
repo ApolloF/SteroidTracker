@@ -34,6 +34,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -74,6 +75,8 @@ import com.apollof.protocoltracker.domain.units.formatVolume
 import com.apollof.protocoltracker.domain.units.tablets
 import com.apollof.protocoltracker.domain.units.toBaseOrNull
 import com.apollof.protocoltracker.domain.units.volumeMl
+import com.apollof.protocoltracker.ui.components.rememberSaveableSheetContent
+import com.apollof.protocoltracker.ui.components.jsonSaver
 import com.apollof.protocoltracker.ui.components.CategoryTag
 import com.apollof.protocoltracker.ui.components.CompoundName
 import com.apollof.protocoltracker.ui.components.CompoundPicker
@@ -131,7 +134,7 @@ fun LogDoseSheet(
     val today = slotTimes.dateOf(now, zone)
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
-    var picked by remember { mutableStateOf((target as? LogTarget.Unscheduled)?.compound) }
+    var picked by rememberSaveable(stateSaver = jsonSaver<Compound?>()) { mutableStateOf((target as? LogTarget.Unscheduled)?.compound) }
     // Runs an action once, after the sheet has slid away: a second tap can neither save twice nor land on
     // whatever appears underneath (such as the snackbar's Undo).
     var closing by remember { mutableStateOf(false) }
@@ -141,7 +144,7 @@ fun LogDoseSheet(
         scope.launch { sheetState.hide() }.invokeOnCompletion { action() }
     }
     fun siteChoice(compound: Compound, editing: DoseLog?) = sites?.takeIf { compound.route == Route.INJECTION }?.invoke(compound.id, editing)
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = Tracker.colors.surface) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = Tracker.colors.surface, content = rememberSaveableSheetContent {
         when (target) {
             is LogTarget.Scheduled -> DoseForm(
                 compound = target.compound,
@@ -171,7 +174,7 @@ fun LogDoseSheet(
                 val compound = (compounds.firstOrNull { it.id == log.compoundId } ?: log.snapshot.asCompound(log.compoundId, log.site))
                     .copy(baseUnit = log.snapshot.baseUnit)
                 // Skipping applies to planned doses only.
-                var status by remember { mutableStateOf(log.status) }
+                var status by rememberSaveable { mutableStateOf(log.status) }
                 DoseForm(
                     compound = compound,
                     heading = "Edit dose",
@@ -230,7 +233,7 @@ fun LogDoseSheet(
                 }
             }
         }
-    }
+    })
 }
 
 @Composable
@@ -263,14 +266,16 @@ private fun DoseForm(
     // Edit mode set to Skipped: a skip has no amount, time or site of its own, so those fields go.
     val skipped = status == LogStatus.SKIPPED
     val units = unitsFor(compound.baseUnit, formulation)
-    var unit by remember { mutableStateOf(initialAmount?.unit ?: planned?.unit ?: if (compound.baseUnit == BaseUnit.IU) DoseUnit.IU else DoseUnit.MG) }
-    var text by remember { mutableStateOf(initialAmount?.let { formatNumber(it.value, 4) } ?: "") }
-    var time by remember { mutableStateOf(initialTime) }
-    var usingNow by remember { mutableStateOf(!editing && abs(initialTime.epochSecond - now.epochSecond) < 60) }
-    var pickTime by remember { mutableStateOf(false) }
-    var note by remember { mutableStateOf(initialNote) }
-    // Starts again when the history arrives after the sheet opened.
-    var chosenSite by remember(site?.initial) { mutableStateOf(site?.initial) }
+    var unit by rememberSaveable { mutableStateOf(initialAmount?.unit ?: planned?.unit ?: if (compound.baseUnit == BaseUnit.IU) DoseUnit.IU else DoseUnit.MG) }
+    var text by rememberSaveable { mutableStateOf(initialAmount?.let { formatNumber(it.value, 4) } ?: "") }
+    var time by rememberSaveable { mutableStateOf(initialTime) }
+    var usingNow by rememberSaveable { mutableStateOf(!editing && abs(initialTime.epochSecond - now.epochSecond) < 60) }
+    var pickTime by rememberSaveable { mutableStateOf(false) }
+    var note by rememberSaveable { mutableStateOf(initialNote) }
+    // History may arrive after restoration; keep an explicit choice while suggestions load.
+    var sitePicked by rememberSaveable { mutableStateOf(false) }
+    var pickedSite by rememberSaveable { mutableStateOf<String?>(null) }
+    val chosenSite = if (sitePicked) pickedSite else site?.initial
 
     val value = text.toDecimal()?.takeIf { it > 0 }
     // A field that still shows the plan (or the dose being edited) saves that amount, not its rounded copy.
@@ -378,7 +383,7 @@ private fun DoseForm(
             }
         }
 
-        if (site != null) SiteRow(site, chosenSite, slotTimes.dateOf(now, zone), zone, slotTimes) { chosenSite = it }
+        if (site != null) SiteRow(site, chosenSite, slotTimes.dateOf(now, zone), zone, slotTimes) { pickedSite = it; sitePicked = true }
 
         if (status != null) Segmented(LogStatus.entries, status, { if (it == LogStatus.TAKEN) "Taken" else "Skipped" }) { onStatus(it) }
 
