@@ -9,6 +9,11 @@ updates:
       gradle:
         patterns: ["*"]
         update-types: [minor, patch]
+    ignore:
+      # AGP 9.5 fails the release build ("Compose Preview requires unit tests"
+      # for fossRelease). Held at 9.4.x until that is fixed on purpose.
+      - dependency-name: "com.android.*"
+        update-types: ["version-update:semver-minor"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
