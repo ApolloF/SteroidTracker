@@ -84,6 +84,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 
 /** Section order (injectable, oral, support, peptide), then the plan's own order. */
 private val todayOrder = compareBy<DoseItem>(
@@ -186,11 +187,15 @@ data class DayUi(
 )
 
 /** What the log sheet edits: a scheduled dose (pending or already logged) or a new unscheduled one. */
+@Serializable
 sealed interface LogTarget {
     /** [backfill]: opened from a past day, so the time starts at the planned time. */
+    @Serializable
     data class Scheduled(val occurrence: Occurrence, val compound: Compound, val existing: DoseLog?, val partLabel: String, val backfill: Boolean = false) : LogTarget
+    @Serializable
     data class Unscheduled(val compound: Compound?) : LogTarget
     /** A logged dose, planned or extra, opened to change it or delete it. */
+    @Serializable
     data class Edit(val log: DoseLog) : LogTarget
 }
 

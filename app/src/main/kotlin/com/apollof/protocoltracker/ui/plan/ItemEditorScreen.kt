@@ -50,6 +50,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -67,6 +68,7 @@ import com.apollof.protocoltracker.domain.model.DoseBasis
 import com.apollof.protocoltracker.domain.model.DoseUnit
 import com.apollof.protocoltracker.domain.model.Route
 import com.apollof.protocoltracker.ui.appViewModel
+import com.apollof.protocoltracker.ui.components.rememberSaveableSheetContent
 import com.apollof.protocoltracker.ui.components.CategoryTag
 import com.apollof.protocoltracker.ui.components.CompoundName
 import com.apollof.protocoltracker.ui.components.categoryLabels
@@ -105,7 +107,7 @@ fun ItemEditorScreen(itemId: String?, phaseId: String?, onDone: () -> Unit, onNe
     val preview = remember(d, compounds, loaded, slotTimes) { vm.preview(d, compounds, slotTimes) }
     val compound = compounds.firstOrNull { it.id == d.compoundId }
     var confirmDelete by remember { mutableStateOf(false) }
-    var picking by remember { mutableStateOf(itemId == null && d.compoundId == null) }
+    var picking by rememberSaveable { mutableStateOf(itemId == null && d.compoundId == null) }
     var addingTime by remember { mutableStateOf(false) }
     var tried by remember { mutableStateOf(false) }
     val c = Tracker.colors
@@ -311,11 +313,11 @@ fun ItemEditorScreen(itemId: String?, phaseId: String?, onDone: () -> Unit, onNe
     }
 
     if (picking) {
-        ModalBottomSheet(onDismissRequest = { picking = false }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = c.surface) {
+        ModalBottomSheet(onDismissRequest = { picking = false }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = c.surface, content = rememberSaveableSheetContent {
             CompoundPicker(compounds, onPick = { vm.selectCompound(it); picking = false }, footer = {
                 SecondaryButton("New compound…", { picking = false; onNewCompound() }, Modifier.fillMaxWidth(), Icons.Outlined.Add)
             })
-        }
+        })
     }
     if (addingTime) TimePickDialog(java.time.LocalTime.of(9, 0), onDismiss = { addingTime = false }, onConfirm = { t ->
         vm.edit { it.copy(times = (it.times + t).distinct()) }; addingTime = false

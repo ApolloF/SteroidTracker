@@ -32,6 +32,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateSetOf
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.snapshots.SnapshotStateSet
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -55,6 +57,9 @@ import com.apollof.protocoltracker.domain.model.printedValue
 import com.apollof.protocoltracker.domain.model.upFrontMarkers
 import com.apollof.protocoltracker.domain.pk.LabUnits
 import com.apollof.protocoltracker.domain.units.formatNumber
+import com.apollof.protocoltracker.ui.components.rememberSaveableSheetContent
+import com.apollof.protocoltracker.ui.components.nullableSaver
+import com.apollof.protocoltracker.ui.components.stateMapSaver
 import com.apollof.protocoltracker.ui.components.DateField
 import com.apollof.protocoltracker.ui.components.DeleteEntryButton
 import com.apollof.protocoltracker.ui.components.FieldRow
@@ -92,17 +97,17 @@ fun SymptomSheet(
     existing: JournalEntry.Symptoms? = null,
     onDelete: (() -> Unit)? = null,
 ) {
-    val selected = remember { mutableStateMapOf<String, Boolean>().apply { existing?.symptoms?.forEach { put(it, true) } } }
-    var mood by remember { mutableStateOf(existing?.mood) }
-    var hair by remember { mutableStateOf(existing?.hairShedding) }
-    var note by remember { mutableStateOf(existing?.note ?: "") }
-    var time by remember { mutableStateOf(existing?.at) }
+    val selected = rememberSaveable(saver = stateMapSaver<Boolean>()) { mutableStateMapOf<String, Boolean>().apply { existing?.symptoms?.forEach { put(it, true) } } }
+    var mood by rememberSaveable(stateSaver = nullableSaver<Int>()) { mutableStateOf(existing?.mood) }
+    var hair by rememberSaveable(stateSaver = nullableSaver<Int>()) { mutableStateOf(existing?.hairShedding) }
+    var note by rememberSaveable { mutableStateOf(existing?.note ?: "") }
+    var time by rememberSaveable(stateSaver = nullableSaver<Instant>()) { mutableStateOf(existing?.at) }
     val c = Tracker.colors
     val keys = SymptomCatalog.all.map { it.key }.filter { selected[it] == true } +
         existing?.symptoms.orEmpty().filter { SymptomCatalog.find(it) == null }
     val canSave = keys.isNotEmpty() || mood != null || hair != null || note.isNotBlank()
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = c.surface) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = c.surface, content = rememberSaveableSheetContent {
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 16.dp).imePadding().navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -151,7 +156,7 @@ fun SymptomSheet(
             if (!canSave) Text("Choose a symptom or add a note.", style = TrackerType.caption, color = c.muted)
             if (existing != null && onDelete != null) DeleteEntryButton(onDelete)
         }
-    }
+    })
 }
 
 /**
@@ -172,12 +177,12 @@ fun BloodworkSheet(
     measured: Set<String> = emptySet(),
     onDelete: (() -> Unit)? = null,
 ) {
-    var units by remember { mutableStateOf(defaultUnits) }
+    var units by rememberSaveable { mutableStateOf(defaultUnits) }
     val start = (existing?.at ?: now).atZone(zone)
-    var date by remember { mutableStateOf(start.toLocalDate()) }
-    var time by remember { mutableStateOf(LocalTime.of(start.hour, start.minute)) }
-    var lab by remember { mutableStateOf(existing?.lab ?: "") }
-    var note by remember { mutableStateOf(existing?.note ?: "") }
+    var date by rememberSaveable { mutableStateOf(start.toLocalDate()) }
+    var time by rememberSaveable { mutableStateOf(LocalTime.of(start.hour, start.minute)) }
+    var lab by rememberSaveable { mutableStateOf(existing?.lab ?: "") }
+    var note by rememberSaveable { mutableStateOf(existing?.note ?: "") }
     val original = existing?.results.orEmpty()
     // Results with no known marker, in saved order, listed under "Other tests" (import doc §7).
     val unlisted = original.filter { BloodMarkers.find(it.marker) == null }
@@ -188,7 +193,7 @@ fun BloodworkSheet(
         return formatNumber(m.fromStored(r.value, u), 3)
     }
     // Raw text per marker, in the units currently selected (unlisted results: as printed, never converted).
-    val texts = remember {
+    val texts = rememberSaveable(saver = stateMapSaver<String>()) {
         mutableStateMapOf<String, String>().apply {
             BloodMarkers.all.forEach { m -> shown(m.key, defaultUnits).takeIf { it.isNotEmpty() }?.let { put(m.key, it) } }
             unlisted.forEach { put(it.marker, it.printedNumber()) }
@@ -196,7 +201,9 @@ fun BloodworkSheet(
     }
     // Fields the user typed a different value into. Only these are rebuilt on save; every other result, including its
     // lab range, qualifier and unlisted results, is kept exactly as saved (import doc §10.7).
-    val touched = remember { mutableStateSetOf<String>() }
+    val touched = rememberSaveable(saver = listSaver<SnapshotStateSet<String>, String>(
+        save = { it.toList() }, restore = { mutableStateSetOf(*it.toTypedArray()) },
+    )) { mutableStateSetOf<String>() }
     // Also every field that holds a value when the history arrives, so nothing typed folds away.
     val upFront = remember(measured) {
         upFrontMarkers(measured + original.map { it.marker } + texts.filterValues { it.isNotEmpty() }.keys).mapTo(HashSet()) { it.key }
@@ -226,7 +233,7 @@ fun BloodworkSheet(
         units = next
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = c.surface) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = c.surface, content = rememberSaveableSheetContent {
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 16.dp).imePadding().navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -318,7 +325,7 @@ fun BloodworkSheet(
             if (implausible.isNotEmpty()) Text("Fix the marked results to save.", style = TrackerType.caption, color = c.muted)
             if (existing != null && onDelete != null) DeleteEntryButton(onDelete)
         }
-    }
+    })
 }
 
 /** Caption under a result field: its range, then how a censored value was reported; null when neither. */

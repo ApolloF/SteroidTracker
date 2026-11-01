@@ -105,16 +105,25 @@ import com.apollof.protocoltracker.ui.theme.SectionLabelStyle
 import com.apollof.protocoltracker.ui.theme.Spacing
 import com.apollof.protocoltracker.ui.theme.Tracker
 import com.apollof.protocoltracker.ui.theme.TrackerType
+import com.apollof.protocoltracker.ui.components.jsonSaver
 import java.time.LocalTime
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 
+@Serializable
 private sealed interface Sheet {
+    @Serializable
     data class Dose(val target: LogTarget) : Sheet
+    @Serializable
     data object BloodPressure : Sheet
+    @Serializable
     data object Note : Sheet
+    @Serializable
     data object Symptoms : Sheet
+    @Serializable
     data object Bloodwork : Sheet
     /** A journal entry from "Logged today", opened to change or delete it. */
+    @Serializable
     data class Entry(val entry: JournalEntry) : Sheet
 }
 
@@ -134,7 +143,7 @@ fun TodayScreen(onOpenSettings: () -> Unit, onOpenPlan: () -> Unit, onImportBloo
     var pickingTime by remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    var sheet by remember { mutableStateOf<Sheet?>(null) }
+    var sheet by rememberSaveable(stateSaver = jsonSaver<Sheet?>()) { mutableStateOf<Sheet?>(null) }
     var weekOpen by rememberSaveable { mutableStateOf(false) }
     val motion = Motions.current
     val c = Tracker.colors
@@ -153,7 +162,7 @@ fun TodayScreen(onOpenSettings: () -> Unit, onOpenPlan: () -> Unit, onImportBloo
     // A chosen check time is for one sitting: leaving Today (or the app) sets the clock back to now.
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { vm.setLogTime(null) }
 
-    var logMenu by remember { mutableStateOf(false) }
+    var logMenu by rememberSaveable { mutableStateOf(false) }
     Scaffold(
         containerColor = c.bg,
         snackbarHost = { SnackbarHost(snackbar) },
