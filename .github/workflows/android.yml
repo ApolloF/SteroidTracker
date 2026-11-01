@@ -59,7 +59,9 @@ jobs:
           arch: x86_64
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
-          script: ./gradlew connectedFossDebugAndroidTest connectedPlayDebugAndroidTest --stacktrace
+          # One rerun on the same emulator: a slow software-rendered emulator flakes now and then, and a
+          # real crash fails both runs.
+          script: ./gradlew connectedFossDebugAndroidTest connectedPlayDebugAndroidTest --stacktrace || ./gradlew connectedFossDebugAndroidTest connectedPlayDebugAndroidTest --stacktrace
       - uses: actions/upload-artifact@v7
         if: failure()
         with:

@@ -112,6 +112,9 @@ class SmokeTest {
         waitFor(log, unmerged = true)
         compose.onNode(log, useUnmergedTree = true).click()
         waitForText("Systolic, diastolic and pulse")
+        // Same as closeSheet: the menu's text shows before its window takes focus, and a row tapped in between did nothing.
+        Espresso.onView(isRoot()).inRoot(isDialog()).check { _, _ -> }
+        compose.waitForIdle()
     }
 
     /** Opens a Log menu row, waits for [shows] and closes the sheet. */
